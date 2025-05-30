@@ -1,4 +1,4 @@
-name: Deploy Spring Boot Application to Azure App Service
+name: Deploy Spring Boot Application to Azure App Services
  
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
     - name: Set up Java JDK 17
       uses: actions/setup-java@v3
       with:
-        java-version: '17'  # Use Java 17 (update if needed)
+        java-version: '21'  # Use Java 17 (update if needed)
         distribution: 'temurin'  # Use 'temurin' (formerly AdoptOpenJDK)
  
     # Step 3: Cache Maven dependencies for faster builds
@@ -38,6 +38,6 @@ jobs:
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
-        app-name: 'talent-backend'  # Replace with your Azure Web App name
+        app-name: 'CompanyproductBackend'  # Replace with your Azure Web App name
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # Store your Azure publish profile as a secret
         package: target/*.jar  # Path to the built JAR file (or WAR file if applicable)
