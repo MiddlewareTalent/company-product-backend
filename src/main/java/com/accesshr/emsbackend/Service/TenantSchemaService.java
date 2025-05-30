@@ -1,6 +1,7 @@
 package com.accesshr.emsbackend.Service;
 
 import com.accesshr.emsbackend.Entity.*;
+import com.accesshr.emsbackend.exceptions.ResourceNotFoundException;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
@@ -8,9 +9,7 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.tool.schema.spi.SchemaManagementToolCoordinator;
 import org.springframework.stereotype.Service;
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -27,8 +26,28 @@ public class TenantSchemaService {
 
     public void createTenant(String schemaName) throws SQLException {
         schemaName = schemaName.replace(" ", "_");
+        if (schemaExistsAndHasData(schemaName)) {
+            throw new ResourceNotFoundException("Schema '" + schemaName + "' already exists and contains data.");
+        }
         createSchemaIfNotExists(schemaName);
         createTablesInSchema(schemaName);
+    }
+
+    private boolean schemaExistsAndHasData(String schemaName) throws SQLException {
+        String checkTablesSql = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ?";
+
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(checkTablesSql)) {
+            stmt.setString(1, schemaName);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    int tableCount = rs.getInt(1);
+                    return tableCount > 0;
+                }
+            }
+        }
+        return false;
     }
 
     private void createSchemaIfNotExists(String schemaName) throws SQLException {

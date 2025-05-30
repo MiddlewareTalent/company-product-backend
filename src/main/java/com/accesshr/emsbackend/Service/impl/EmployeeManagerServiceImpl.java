@@ -52,7 +52,7 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
         employeeManagerDTO.setRole("Admin");
         EmployeeManagerDTO empDto=saveEmployee(employeeManagerDTO);
          String text="Dear " + employeeManagerDTO.getFirstName() + " " + employeeManagerDTO.getLastName() +
-                 ",\nPlease open this link: http://localhost:3000/" + company + "/login";
+                 ",\nPlease open this link: https://mtldemofrontendapp.azurewebsites.net/" + company + "/login";
 
       SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(employeeManagerDTO.getEmail());
