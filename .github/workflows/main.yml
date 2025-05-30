@@ -18,7 +18,7 @@ jobs:
     - name: Set up Java JDK 17
       uses: actions/setup-java@v3
       with:
-        java-version: '17'  # Use Java 17 (update if needed)
+        java-version: '21'  # Use Java 17 (update if needed)
         distribution: 'temurin'  # Use 'temurin' (formerly AdoptOpenJDK)
  
     # Step 3: Cache Maven dependencies for faster builds
