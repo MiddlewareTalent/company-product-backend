@@ -557,7 +557,9 @@ public class EmployeeManagerController {
             @RequestParam("employeeId") String employeeId,
             @RequestParam(value = "profilePhoto", required = false) MultipartFile profilePhoto) {
         EmployeeManager employee = employeeManagerRepository.findByEmployeeId(employeeId);
-        deleteDocument(employeeId, employee);
+        if(employee.getProfilePhoto()!=null){
+            deleteDocument(employeeId, employee);
+        }
         try {
             employee.setEmployeeId(employeeId);
             employee.setProfilePhoto(saveOptionalFile(profilePhoto,"profilePhoto"));
