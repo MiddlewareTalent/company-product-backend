@@ -11,12 +11,18 @@ import com.accesshr.emsbackend.response.LoginResponse;
 import com.azure.storage.blob.*;
 import com.azure.storage.blob.models.BlobProperties;
 import com.azure.storage.blob.models.BlobStorageException;
+import com.azure.storage.blob.models.PublicAccessType;
+
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.azure.core.util.Context;
+import com.azure.storage.blob.models.PublicAccessType;
+import com.azure.storage.blob.models.BlobContainerAccessPolicies;
+
 
 import java.io.IOException;
 import java.net.URL;
@@ -187,31 +193,39 @@ public class EmployeeManagerController {
 //    }
 
     public String uploadFIle(MultipartFile file, String caption) throws IOException {
-        String tenantId = TenantContext.getTenantId();
-        tenantId=tenantId.replace("_","-");
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new IllegalStateException("Tenant ID is missing from context");
-        }
+    String tenantId = TenantContext.getTenantId();
+    tenantId = tenantId.replace("_", "-");
 
-        String containerForTenant = tenantId.toLowerCase() + "-container";
-        String blobFilename = file.getOriginalFilename();
-
-        BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
-                .connectionString(connectionString)
-                .buildClient();
-
-        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerForTenant);
-
-        // Create container if it does not exist
-        if (!containerClient.exists()) {
-            containerClient.create();
-        }
-
-        BlobClient blobClient = containerClient.getBlobClient(blobFilename);
-        blobClient.upload(file.getInputStream(), file.getSize(), true);
-
-        return blobClient.getBlobUrl();
+    if (tenantId == null || tenantId.isBlank()) {
+        throw new IllegalStateException("Tenant ID is missing from context");
     }
+
+    String containerForTenant = tenantId.toLowerCase() + "-container";
+    String blobFilename = file.getOriginalFilename();
+
+    BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
+            .connectionString(connectionString)
+            .buildClient();
+
+    BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerForTenant);
+
+    // Create container if it does not exist, with public access to blobs
+    if (!containerClient.exists()) {
+    containerClient.createWithResponse(
+        null, // Metadata
+        PublicAccessType.BLOB,
+        null, // Request conditions
+        Context.NONE
+    );
+}
+
+
+    BlobClient blobClient = containerClient.getBlobClient(blobFilename);
+    blobClient.upload(file.getInputStream(), file.getSize(), true);
+
+    return blobClient.getBlobUrl();
+}
+
 
 
     private String saveFile(MultipartFile file, String fileType) throws IOException {
