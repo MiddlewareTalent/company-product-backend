@@ -3,8 +3,10 @@ package com.accesshr.emsbackend.EmployeeController;
 import com.accesshr.emsbackend.Dto.EmployeeManagerDTO;
 import com.accesshr.emsbackend.Dto.LoginDTO;
 import com.accesshr.emsbackend.EmployeeController.Config.TenantContext;
+import com.accesshr.emsbackend.Entity.ClientDetails;
 import com.accesshr.emsbackend.Entity.EmployeeManager;
 import com.accesshr.emsbackend.Repo.EmployeeManagerRepository;
+import com.accesshr.emsbackend.Service.ClientDetailsService;
 import com.accesshr.emsbackend.Service.EmployeeManagerService;
 import com.accesshr.emsbackend.Service.TenantSchemaService;
 import com.accesshr.emsbackend.response.LoginResponse;
@@ -46,12 +48,13 @@ public class EmployeeManagerController {
     private final EmployeeManagerService employeeManagerService;
     private final EmployeeManagerRepository employeeManagerRepository;
     private final TenantSchemaService tenantSchemaService;
-   
+    private final ClientDetailsService clientDetailsService;
 
-    public EmployeeManagerController(EmployeeManagerService employeeManagerService, EmployeeManagerRepository employeeManagerRepository, TenantSchemaService tenantSchemaService) {
+    public EmployeeManagerController(EmployeeManagerService employeeManagerService, EmployeeManagerRepository employeeManagerRepository, TenantSchemaService tenantSchemaService, ClientDetailsService clientDetailsService) {
         this.employeeManagerService = employeeManagerService;
         this.employeeManagerRepository = employeeManagerRepository;
         this.tenantSchemaService=tenantSchemaService;
+        this.clientDetailsService = clientDetailsService;
     }
 
 
@@ -145,12 +148,22 @@ public class EmployeeManagerController {
         employeeManagerDTO.setEmployeeId(employeeId);
         employeeManagerDTO.setRole("admin"); // Default role for admin
         employeeManagerDTO.setPassword(password); // Set plain text password
+
+        ClientDetails clientDetails=new ClientDetails();
+
+
         try {
             
             tenantSchemaService.createTenant(company);
-            company=company.replace(" ", "_");
-            TenantContext.setTenantId(company);
-            EmployeeManagerDTO registeredAdmin = employeeManagerService.addAdmin(company,employeeManagerDTO);
+            String companySchema=company.replace(" ", "_");
+            clientDetails.setFirstName(firstName);
+            clientDetails.setLastName(lastName);
+            clientDetails.setCompanyName(company);
+            clientDetails.setEmail(email);
+            clientDetails.setSchemaName(companySchema);
+            clientDetailsService.createClient(clientDetails);
+            TenantContext.setTenantId(companySchema);
+            EmployeeManagerDTO registeredAdmin = employeeManagerService.addAdmin(companySchema,employeeManagerDTO);
             return ResponseEntity.ok(registeredAdmin);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Registration failed: " + e.getMessage());
