@@ -38,7 +38,9 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())  // Disable CSRF protection for stateless JWT authentication
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/v1/employeeManager/register/{company}","/api/tenants/{schemaName}", "/api/v1/employeeManager/login","/api/v1/employeeManager/add","/api/v1/employeeManager/change-password","/api/clientDetails/{id}","/api/v1/employeeManager/reset-password/{employeeId}/{newPassword},").permitAll()
+
+
+                        .requestMatchers("/api/v1/employeeManager/register/{company}","/api/tenants/{schemaName}","/api/clientDetails", "/api/v1/employeeManager/login","/api/v1/employeeManager/add","/api/v1/employeeManager/change-password","/api/clientDetails/{id}","/api/v1/employeeManager/reset-password/{employeeId}/{newPassword},").permitAll()
                         .anyRequest().authenticated()  // Require authentication for all other requests
                 )
                 .httpBasic(Customizer.withDefaults())  // Enable basic HTTP authentication for simplicity
