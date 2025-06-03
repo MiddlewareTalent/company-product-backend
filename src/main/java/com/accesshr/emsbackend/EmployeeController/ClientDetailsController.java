@@ -1,6 +1,4 @@
 package com.accesshr.emsbackend.EmployeeController;
-
-
 import com.accesshr.emsbackend.Entity.ClientDetails;
 import com.accesshr.emsbackend.Service.ClientDetailsService;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +23,7 @@ public class ClientDetailsController {
         return ResponseEntity.ok(saveClient);
     }
 
-    @GetMapping
+    @GetMapping(produces = "application/json")
     public ResponseEntity<List<ClientDetails>> getAllClientDetails() {
         List<ClientDetails> allClientDetails = clientDetailsService.getAllClientDetails();
         return ResponseEntity.ok(allClientDetails);

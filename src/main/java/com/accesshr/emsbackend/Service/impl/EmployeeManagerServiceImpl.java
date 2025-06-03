@@ -192,6 +192,7 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
             update.setCity(employeeManagerDTO.getCity());
             update.setRegion(employeeManagerDTO.getRegion());
             update.setPostalCode(employeeManagerDTO.getPostalCode());
+            update.setEmployeeId(employeeManagerDTO.getEmployeeId());
             update.setNationalInsuranceNumber(employeeManagerDTO.getNationalInsuranceNumber());
             update.setWorkingCountry(employeeManagerDTO.getWorkingCountry());
             update.setCorporateEmail(employeeManagerDTO.getCorporateEmail());
