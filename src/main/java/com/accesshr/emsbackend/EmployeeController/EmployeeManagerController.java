@@ -36,7 +36,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/employeeManager")
-@CrossOrigin(origins = "https://company-product-frontend.azurewebsites.net/register") // Adjust as needed for your frontend
+@CrossOrigin(origins = "https://company-product-frontend.azurewebsites.net") // Adjust as needed for your frontend
 public class EmployeeManagerController {
 
     @Value("${azure.storage.connection-string}")
