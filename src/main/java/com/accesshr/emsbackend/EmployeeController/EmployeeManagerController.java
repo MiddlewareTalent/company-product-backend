@@ -36,7 +36,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/employeeManager")
-@CrossOrigin(origins = "https://mtldemofrontendapp.azurewebsites.net") // Adjust as needed for your frontend
+@CrossOrigin(origins = "https://company-product-frontend.azurewebsites.net/register") // Adjust as needed for your frontend
 public class EmployeeManagerController {
 
     @Value("${azure.storage.connection-string}")
@@ -137,16 +137,22 @@ public class EmployeeManagerController {
             @Valid @RequestParam("firstName") String firstName,
             @RequestParam("lastName") String lastName,
             @RequestParam("email") String email,
-            @RequestParam("employeeId") String employeeId,
-            @RequestParam("password") String password,@PathVariable String company) {
+            @RequestParam("password") String password,
+            @RequestParam("task") boolean task,
+            @RequestParam("timeSheet") boolean timeSheet,
+            @RequestParam("organizationChart") boolean organizationChart,
+            @RequestParam("leaveManagement") boolean leaveManagement,@PathVariable String company) {
 
         EmployeeManagerDTO employeeManagerDTO = new EmployeeManagerDTO();
         employeeManagerDTO.setFirstName(firstName);
         employeeManagerDTO.setLastName(lastName);
         employeeManagerDTO.setEmail(email);
         employeeManagerDTO.setCorporateEmail(email); // Set corporate email to the same email for registration
-        employeeManagerDTO.setEmployeeId(employeeId);
         employeeManagerDTO.setRole("admin"); // Default role for admin
+        employeeManagerDTO.setOrganizationChart(organizationChart);
+        employeeManagerDTO.setTask(task);
+        employeeManagerDTO.setLeaveManagement(leaveManagement);
+        employeeManagerDTO.setTimeSheet(timeSheet);
         employeeManagerDTO.setPassword(password); // Set plain text password
 
         ClientDetails clientDetails=new ClientDetails();
@@ -343,6 +349,8 @@ public class EmployeeManagerController {
 
     @PutMapping("/update/{id}")
     public ResponseEntity<?> updateEmployeeData(@PathVariable("id") int id, EmployeeManagerDTO employeeManagerDTO) {
+        System.out.println(employeeManagerDTO.isOrganizationChart());
+        System.out.println(employeeManagerDTO.isTask());
         EmployeeManagerDTO updateEmp = employeeManagerService.updateEmployee(id, employeeManagerDTO);
         try {
             return ResponseEntity.ok(updateEmp);

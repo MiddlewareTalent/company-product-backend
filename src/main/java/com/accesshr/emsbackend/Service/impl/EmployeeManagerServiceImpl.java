@@ -49,7 +49,7 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
     @Transactional
     public EmployeeManagerDTO addAdmin(String company, EmployeeManagerDTO employeeManagerDTO) {
         // Set the role to Admin
-        employeeManagerDTO.setRole("Admin");
+        employeeManagerDTO.setRole("admin");
         EmployeeManagerDTO empDto=saveEmployee(employeeManagerDTO);
          String text="Dear " + employeeManagerDTO.getFirstName() + " " + employeeManagerDTO.getLastName() +
                  ",\nPlease open this link: https://mtldemofrontendapp.azurewebsites.net/" + company + "/login";
@@ -209,7 +209,6 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
             update.setVisa(employeeManagerDTO.getVisa());
             update.setIdentityCard(employeeManagerDTO.getIdentityCard());
             update.setOtherDocuments(employeeManagerDTO.getOtherDocuments());
-            update.setPassword(employeeManagerDTO.getPassword());
             update.setProfilePhoto(employeeManagerDTO.getProfilePhoto());
             employeeManagerRepository.save(update);
         }
