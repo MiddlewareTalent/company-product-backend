@@ -85,7 +85,8 @@ public class TenantSchemaService {
                 Holiday.class,
                 LeaveRequest.class,
                 LeaveSheet.class,
-                Notifications.class
+                Notifications.class,
+                JobRoles.class
 
         );
         for (Class<?> entityClass : entityClasses) {
