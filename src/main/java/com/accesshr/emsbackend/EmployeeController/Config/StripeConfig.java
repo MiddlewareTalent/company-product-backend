@@ -1,19 +1,19 @@
-import com.stripe.Stripe;
+// import com.stripe.Stripe;
 
-import jakarta.annotation.PostConstruct;
+// import jakarta.annotation.PostConstruct;
 
-import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.annotation.Value;
+// import org.springframework.stereotype.Component;
+// import org.springframework.beans.factory.annotation.Value;
 
 
-@Component
-public class StripeConfig {
+// @Component
+// public class StripeConfig {
 
-    @Value("${stripe.secret.key}")
-    private String stripeSecretKey;
+//     @Value("${stripe.secret.key}")
+//     private String stripeSecretKey;
 
-    @PostConstruct
-    public void init() {
-        Stripe.apiKey = stripeSecretKey;
-    }
-}
+//     @PostConstruct
+//     public void init() {
+//         Stripe.apiKey = stripeSecretKey;
+//     }
+// }
