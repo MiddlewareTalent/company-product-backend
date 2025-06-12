@@ -30,7 +30,6 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     private LeaveSheetRepository leaveSheetRepository;
 
     public LeaveRequest submitLeaveRequest(LeaveRequest leaveRequest) {
-
         // Check if leave start and end dates are provided
         if (leaveRequest.getLeaveStartDate() == null || leaveRequest.getLeaveEndDate() == null) {
             throw new RuntimeException("Leave start date and end date must be provided.");
@@ -40,30 +39,23 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         if (overlappingCount > 0) {
             throw new RuntimeException("You have already applied for leave on one or more of these dates.");
         }
-
-        // Validate if overlapping leaves exist if the status is REJECTED
-//        if (leaveRequest.getLeaveStatus() == LeaveRequest.LeaveStatus.REJECTED) {
-//            long overlapping = leaveRequestRepository.countOverlappingLeaves(leaveRequest.getEmployeeId(), leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate());
-//            if (overlapping > 0) {
-//                throw new RuntimeException("You have already applied for leave on one or more of these dates.");
-//            }
-//        }
-
-        Optional<LeaveRequest> existingLeave = leaveRequestRepository.findByEmployeeIdAndLeaveStartDateAndLeaveEndDate(
+//        Optional<LeaveRequest> existingLeave = leaveRequestRepository.findByEmployeeIdAndLeaveStartDateAndLeaveEndDate(
+//                leaveRequest.getEmployeeId(), leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate()
+//        );
+        Optional<LeaveRequest> existingLeave = leaveRequestRepository.findActiveLeaveByEmployeeAndStartAndEndDate(
                 leaveRequest.getEmployeeId(), leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate()
         );
+
 
         if (existingLeave.isPresent()) {
             throw new RuntimeException("You have already applied for leave on the same start and end date.");
         }
 
-        if (!leaveRequest.isLOP()){
+        if (!leaveRequest.isLOP()) {
             validateLeaveBalance(leaveRequest);
-        }else {
+        } else {
             validateLeaveBalance(leaveRequest);
         }
-        // Validate leave balance based on the leave type
-//        validateLeaveBalance(leaveRequest);
 
         // Set status to PENDING and calculate leave duration
         leaveRequest.setLeaveStatus(LeaveRequest.LeaveStatus.PENDING);
@@ -78,25 +70,64 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     }
 
 
-    // Method to validate if the employee has remaining leave balance for the requested type
+//    // Method to validate if the employee has remaining leave balance for the requested type
+//    public void validateLeaveBalance(LeaveRequest leaveRequest) {
+////        long leaveCount = leaveRequestRepository.countByEmployeeIdAndLeaveType(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType());
+//        Integer totalLeaveDaysTaken = leaveRequestRepository.getTotalLeaveDaysByEmployeeIdAndLeaveType(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType()).orElse(0);
+//
+//        int currentYear = LocalDate.now().getYear();
+//        int leaveYear = leaveRequest.getLeaveStartDate().getYear();
+//
+//        // Reset the leave balance if the year has changed
+//        if (leaveYear < currentYear) {
+//            totalLeaveDaysTaken =0;
+//        }
+//
+//        List<LeaveSheet> leaveSheet = leaveSheetRepository.findAll();
+//        if (leaveSheet.isEmpty()){
+//            throw new ResourceNotFoundException("Leave sheet data is unavailable");
+//        }
+//
+//        // Determine the max leaves based on the leave type
+//        int maxLeaves = switch (leaveRequest.getLeaveType()) {
+//            case SICK -> leaveSheet.get(0).getSICK();
+//            case VACATION -> leaveSheet.get(0).getVACATION();
+//            case CASUAL -> leaveSheet.get(0).getCASUAL();
+//            case MARRIAGE -> leaveSheet.get(0).getMARRIAGE();
+//            case PATERNITY -> leaveSheet.get(0).getPATERNITY();
+//            case MATERNITY -> leaveSheet.get(0).getMATERNITY();
+//            case OTHERS -> leaveSheet.get(0).getOTHERS();
+//            default -> throw new ResourceNotFoundException("Invalid leave type.");
+//        };
+//
+//        double requestedLeaveDays = leaveRequest.calculateBusinessDays(leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate(), HolidaysUtil.getNationalHolidays(leaveRequest.getLeaveStartDate().getYear()));
+//
+//        double remainingLeaveDays = maxLeaves - totalLeaveDaysTaken;
+////        if (totalLeaveDaysTaken + requestedLeaveDays > maxLeaves) {
+////            throw new ResourceNotFoundException(true,"You have exhausted your " + leaveRequest.getLeaveType().name().toLowerCase() + " leave limit of " + maxLeaves + " days. You have " + remainingLeaveDays + " remaining leave days.");
+//////            throw new ResourceNotFoundException("You have exhausted your " + leaveRequest.getLeaveType().name().toLowerCase() + " leave limit of " + maxLeaves + " days. You have " + remainingLeaveDays + " remaining leave days.", String.valueOf(!leaveRequest.isLOP()));
+////        }
+//        if(requestedLeaveDays>remainingLeaveDays){
+//            if(leaveRequest.isLOP()){
+//                double lopDays= requestedLeaveDays - remainingLeaveDays;
+//                leaveRequest.setLopDays(lopDays);
+//            }else{
+//                throw new ResourceNotFoundException(true, "You have exhausted your " + leaveRequest.getLeaveType().name().toLowerCase() +
+//                        " leave limit of " + maxLeaves + " days. You have " + remainingLeaveDays + " remaining leave days.");
+//            }
+//        }else{
+//            leaveRequest.setLopDays(0.0);
+//        }
+//    }
+
     public void validateLeaveBalance(LeaveRequest leaveRequest) {
-//        long leaveCount = leaveRequestRepository.countByEmployeeIdAndLeaveType(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType());
-        Integer totalLeaveDaysTaken = leaveRequestRepository.getTotalLeaveDaysByEmployeeIdAndLeaveType(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType()).orElse(0);
-
-        int currentYear = LocalDate.now().getYear();
         int leaveYear = leaveRequest.getLeaveStartDate().getYear();
-
-        // Reset the leave balance if the year has changed
-        if (leaveYear < currentYear) {
-            totalLeaveDaysTaken =0;
-        }
-
         List<LeaveSheet> leaveSheet = leaveSheetRepository.findAll();
-        if (leaveSheet.isEmpty()){
+
+        if (leaveSheet.isEmpty()) {
             throw new ResourceNotFoundException("Leave sheet data is unavailable");
         }
 
-        // Determine the max leaves based on the leave type
         int maxLeaves = switch (leaveRequest.getLeaveType()) {
             case SICK -> leaveSheet.get(0).getSICK();
             case VACATION -> leaveSheet.get(0).getVACATION();
@@ -108,35 +139,53 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
             default -> throw new ResourceNotFoundException("Invalid leave type.");
         };
 
-        double requestedLeaveDays = leaveRequest.calculateBusinessDays(leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate(), HolidaysUtil.getNationalHolidays(leaveRequest.getLeaveStartDate().getYear()));
+        double requestedDays = leaveRequest.calculateBusinessDays(
+                leaveRequest.getLeaveStartDate(),
+                leaveRequest.getLeaveEndDate(),
+                HolidaysUtil.getNationalHolidays(leaveYear)
+        );
 
-        double remainingLeaveDays = maxLeaves - totalLeaveDaysTaken;
-//        if (totalLeaveDaysTaken + requestedLeaveDays > maxLeaves) {
-//            throw new ResourceNotFoundException(true,"You have exhausted your " + leaveRequest.getLeaveType().name().toLowerCase() + " leave limit of " + maxLeaves + " days. You have " + remainingLeaveDays + " remaining leave days.");
-////            throw new ResourceNotFoundException("You have exhausted your " + leaveRequest.getLeaveType().name().toLowerCase() + " leave limit of " + maxLeaves + " days. You have " + remainingLeaveDays + " remaining leave days.", String.valueOf(!leaveRequest.isLOP()));
-//        }
-        if(requestedLeaveDays>remainingLeaveDays){
-            if(leaveRequest.isLOP()){
-                double lopDays= requestedLeaveDays - remainingLeaveDays;
-                leaveRequest.setLopDays(lopDays);
-            }else{
-                throw new ResourceNotFoundException(true, "You have exhausted your " + leaveRequest.getLeaveType().name().toLowerCase() +
-                        " leave limit of " + maxLeaves + " days. You have " + remainingLeaveDays + " remaining leave days.");
-            }
-        }else{
+        int approvedPaid = leaveRequestRepository
+                .getApprovedPaidLeaveDays(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType())
+                .orElse(0);
+
+        int remaining = maxLeaves - approvedPaid;
+
+        // Case 1: Fully within paid leaves
+        if (remaining >= requestedDays) {
             leaveRequest.setLopDays(0.0);
+        }
+        // Case 2: No remaining paid leaves
+        else if (remaining <= 0) {
+            if (leaveRequest.isLOP()) {
+                leaveRequest.setLopDays(requestedDays);  // All days are LOP
+            } else {
+                throw new ResourceNotFoundException(true, "You have exhausted your " +
+                        leaveRequest.getLeaveType().name().toLowerCase() +
+                        " leave. You can enable LOP for " + requestedDays + " days.");
+            }
+        }
+        // Case 3: Partially within paid leaves
+        else {
+            double neededLop = requestedDays - remaining;
+            if (leaveRequest.isLOP()) {
+                leaveRequest.setLopDays(neededLop);
+            } else {
+                throw new ResourceNotFoundException(true, "You have only " + remaining + " " +
+                        leaveRequest.getLeaveType().name().toLowerCase() +
+                        " leave(s) left. Enable LOP for " + neededLop + " day(s).");
+            }
         }
     }
 
-    @Override
     public double getRemainingLeaveDays(String employeeId, LeaveRequest.LeaveType leaveType) {
-        Integer totalLeaveDaysTaken = leaveRequestRepository.getTotalLeaveDaysByEmployeeIdAndLeaveType(employeeId, leaveType).orElse(0);
-
+//        Integer totalLeaveDaysTaken = leaveRequestRepository.getTotalLeaveDaysByEmployeeIdAndLeaveType(employeeId, leaveType).orElse(0);
+        Integer approvedPaidLeaveDays = leaveRequestRepository.getApprovedPaidLeaveDays(employeeId, leaveType).orElse(0);
         List<LeaveSheet> leaveSheet = leaveSheetRepository.findAll();
-        if (leaveSheet.isEmpty()){
+        if (leaveSheet.isEmpty()) {
             throw new ResourceNotFoundException("Leave sheet data is unavailable");
         }
-        int maxLeaves = switch (leaveType){
+        int maxLeaves = switch (leaveType) {
             case SICK -> leaveSheet.get(0).getSICK();
             case VACATION -> leaveSheet.get(0).getVACATION();
             case CASUAL -> leaveSheet.get(0).getCASUAL();
@@ -146,7 +195,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
             case OTHERS -> leaveSheet.get(0).getOTHERS();
             default -> throw new ResourceNotFoundException("Invalid leave type.");
         };
-        return maxLeaves-totalLeaveDaysTaken;
+        return maxLeaves - approvedPaidLeaveDays;
     }
 
 

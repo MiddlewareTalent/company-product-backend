@@ -37,16 +37,28 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, Long> {
 //                                             @Param("leaveStartDate") LocalDate leaveStartDate,
 //                                             @Param("leaveEndDate") LocalDate leaveEndDate);
 
-    @Query("SELECT COUNT(lr) FROM LeaveRequest lr WHERE lr.employeeId = :employeeId " +
-            "AND EXISTS (SELECT 1 FROM LeaveRequest l WHERE l.employeeId = :employeeId " +
-            "AND (l.leaveStartDate BETWEEN :leaveStartDate AND :leaveEndDate " +
-            "OR l.leaveEndDate BETWEEN :leaveStartDate AND :leaveEndDate " +
-            "OR :leaveStartDate BETWEEN l.leaveStartDate AND l.leaveEndDate " +
-            "OR :leaveEndDate BETWEEN l.leaveStartDate AND l.leaveEndDate))")
+    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
+            "WHERE lr.employeeId = :employeeId " +
+            "AND lr.leaveStatus IN ('PENDING', 'APPROVED') " +
+            "AND (lr.leaveStartDate BETWEEN :leaveStartDate AND :leaveEndDate " +
+            "OR lr.leaveEndDate BETWEEN :leaveStartDate AND :leaveEndDate " +
+            "OR :leaveStartDate BETWEEN lr.leaveStartDate AND lr.leaveEndDate " +
+            "OR :leaveEndDate BETWEEN lr.leaveStartDate AND lr.leaveEndDate)")
     long countOverlappingLeaves(
             @Param("employeeId") String employeeId,
             @Param("leaveStartDate") LocalDate leaveStartDate,
             @Param("leaveEndDate") LocalDate leaveEndDate);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employeeId = :employeeId " +
+            "AND lr.leaveStartDate = :startDate " +
+            "AND lr.leaveEndDate = :endDate " +
+            "AND lr.leaveStatus IN ('PENDING', 'APPROVED')")
+    Optional<LeaveRequest> findActiveLeaveByEmployeeAndStartAndEndDate(
+            @Param("employeeId") String employeeId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
 
 
     @Query("SELECT SUM(lr.duration) " +
@@ -60,4 +72,10 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, Long> {
     @Transactional
     @Query("DELETE FROM LeaveRequest lr WHERE YEAR(lr.leaveStartDate) < :year")
     void resetLeaveBalancesForAllEmployees(@Param("year") int year);
+
+    @Query("SELECT SUM(lr.duration) FROM LeaveRequest lr " +
+            "WHERE lr.employeeId = :employeeId AND lr.leaveType = :leaveType " +
+            "AND lr.leaveStatus = 'APPROVED' AND lr.LOP = false")
+    Optional<Integer> getApprovedPaidLeaveDays(@Param("employeeId") String employeeId,
+                                               @Param("leaveType") LeaveRequest.LeaveType leaveType);
 }
