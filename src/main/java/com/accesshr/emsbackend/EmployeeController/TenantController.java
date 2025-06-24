@@ -20,9 +20,9 @@ public class TenantController {
     }
 
     @PostMapping("/{schemaName}")
-    public ResponseEntity<String> createTenant(@PathVariable String schemaName) {
+    public ResponseEntity<String> createTenant(@PathVariable String schemaName, @PathVariable String country) {
         try {
-            tenantService.createTenant(schemaName);
+            tenantService.createTenant(schemaName, country);
             return ResponseEntity.ok("Schema and tables created for: " + schemaName);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -3,6 +3,7 @@ import com.accesshr.emsbackend.Entity.ClientDetails;
 import com.accesshr.emsbackend.Service.ClientDetailsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.accesshr.emsbackend.EmployeeController.Config.*;
 
 import java.util.List;
 
@@ -45,6 +46,13 @@ public class ClientDetailsController {
     public ResponseEntity<String> deleteClientDetails(@PathVariable Long id) {
         String deleteClient = clientDetailsService.deleteClientDetails(id);
         return ResponseEntity.ok(deleteClient);
+    }
+
+    @GetMapping(value = "/getBySchema/{schemaName}", produces = "application/json")
+    public ResponseEntity<ClientDetails> findClientDetailsBySchema(@PathVariable String schemaName){
+        TenantContext.setTenantId("public");
+      ClientDetails clientDetails = clientDetailsService.getClientDetailsBySchema(schemaName);
+      return ResponseEntity.ok(clientDetails);
     }
 
 }

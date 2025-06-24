@@ -16,7 +16,7 @@ public class TenantIdentifierResolver implements CurrentTenantIdentifierResolver
     public String resolveCurrentTenantIdentifier() {
         String tenantId = TenantContext.getTenantId();
         System.out.println("Current tenant ID resolved: " + tenantId);
-        return tenantId != null ? tenantId : DEFAULT_TENANT;
+        return tenantId != null ? tenantId : "public";
     }
 
     @Override

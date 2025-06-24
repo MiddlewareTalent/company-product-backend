@@ -13,9 +13,11 @@ import java.sql.SQLException;
 public class SchemaMultiTenantConnectionProvider implements MultiTenantConnectionProvider {
 
     private final DataSource dataSource;
+    private final CountryDataSourceManager dataSourceManager;
 
-    public SchemaMultiTenantConnectionProvider(DataSource dataSource) {
+    public SchemaMultiTenantConnectionProvider(DataSource dataSource, CountryDataSourceManager dataSourceManager) {
         this.dataSource = dataSource;
+        this.dataSourceManager = dataSourceManager;
     }
 
     @Override
@@ -30,13 +32,23 @@ public class SchemaMultiTenantConnectionProvider implements MultiTenantConnectio
 
     @Override
     public Connection getConnection(Object tenantIdentifier) throws SQLException {
-        final Connection connection = dataSource.getConnection();
-        try {
-            connection.createStatement().execute("USE " + tenantIdentifier);
-        } catch (SQLException e) {
-            throw new HibernateException("Could not alter JDBC connection to specified schema [" + tenantIdentifier + "]", e);
+        String schema = tenantIdentifier.toString();
+
+//        if ("public".equalsIgnoreCase(schema)) {
+//            // Use default datasource for public schema
+//            Connection conn = dataSource.getConnection();
+//            conn.createStatement().execute("USE public");
+//            return conn;
+//        }
+        String country = TenantContext.getCountry(); // new ThreadLocal
+        if (country == null) {
+            throw new RuntimeException("Country not set in context");
         }
-        return connection;
+
+        DataSource ds = dataSourceManager.getDataSourceForCountry(country);
+        Connection conn = ds.getConnection();
+        conn.createStatement().execute("USE " + schema);
+        return conn;
     }
 
 

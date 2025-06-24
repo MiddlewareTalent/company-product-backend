@@ -4,6 +4,7 @@ import com.accesshr.emsbackend.Dto.EmployeeManagerDTO;
 import com.accesshr.emsbackend.Dto.LoginDTO;
 import com.accesshr.emsbackend.EmployeeController.Config.TenantContext;
 import com.accesshr.emsbackend.Entity.ClientDetails;
+import com.accesshr.emsbackend.Entity.CountryServerConfig;
 import com.accesshr.emsbackend.Entity.EmployeeManager;
 import com.accesshr.emsbackend.Repo.EmployeeManagerRepository;
 import com.accesshr.emsbackend.Service.ClientDetailsService;
@@ -138,43 +139,82 @@ public class EmployeeManagerController {
             @RequestParam("lastName") String lastName,
             @RequestParam("email") String email,
             @RequestParam("password") String password,
-            @RequestParam("task") boolean task,
-            @RequestParam("timeSheet") boolean timeSheet,
-            @RequestParam("organizationChart") boolean organizationChart,
-            @RequestParam("leaveManagement") boolean leaveManagement,@PathVariable String company) {
-
-        EmployeeManagerDTO employeeManagerDTO = new EmployeeManagerDTO();
-        employeeManagerDTO.setFirstName(firstName);
-        employeeManagerDTO.setLastName(lastName);
-        employeeManagerDTO.setEmail(email);
-        employeeManagerDTO.setCorporateEmail(email); // Set corporate email to the same email for registration
-        employeeManagerDTO.setRole("admin"); // Default role for admin
-        employeeManagerDTO.setOrganizationChart(organizationChart);
-        employeeManagerDTO.setTask(task);
-        employeeManagerDTO.setLeaveManagement(leaveManagement);
-        employeeManagerDTO.setTimeSheet(timeSheet);
-        employeeManagerDTO.setPassword(password); // Set plain text password
-
-        ClientDetails clientDetails=new ClientDetails();
-
+            @RequestParam("country") String country,
+            @RequestParam("noOfEmployes") int noOfEmployees,
+            @RequestParam("plan") String plan,
+            @RequestParam ("price") double price,
+            @PathVariable String company) {
 
         try {
-            
-            tenantSchemaService.createTenant(company);
-            String companySchema=company.replace(" ", "_");
+            // Clean schema name
+            String schemaName =country+"_"+company.trim().replace(" ", "_");
+
+            // Validate country
+            CountryServerConfig serverConfig;
+            try {
+                serverConfig = CountryServerConfig.valueOf(country.trim().toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.badRequest().body("Invalid country: " + country);
+            }
+
+            // ✅ Set tenant context FIRST!
+            TenantContext.setTenantId(schemaName);
+            TenantContext.setCountry(country);
+
+            // 1. Create schema and tables
+            tenantSchemaService.createTenant(schemaName, country);
+
+            // 2. Save admin in tenant schema
+            EmployeeManagerDTO employeeManagerDTO = new EmployeeManagerDTO();
+            employeeManagerDTO.setFirstName(firstName);
+            employeeManagerDTO.setLastName(lastName);
+            employeeManagerDTO.setEmail(email);
+            employeeManagerDTO.setCorporateEmail(email);
+            employeeManagerDTO.setRole("admin");
+            employeeManagerDTO.setPassword(password);
+            employeeManagerDTO.setLeaveManagement(true);
+            employeeManagerDTO.setTask(true);
+            employeeManagerDTO.setTimeSheet(true);
+            employeeManagerDTO.setOrganizationChart(true);
+
+            EmployeeManagerDTO registeredAdmin = employeeManagerService.addAdmin(schemaName, employeeManagerDTO);
+
+//            // 3. Clear context BEFORE saving to default DB
+            TenantContext.setCountry(country);
+            TenantContext.setTenantId("public");
+
+            ClientDetails clientDetails = new ClientDetails();
             clientDetails.setFirstName(firstName);
             clientDetails.setLastName(lastName);
             clientDetails.setCompanyName(company);
             clientDetails.setEmail(email);
-            clientDetails.setSchemaName(companySchema);
+            clientDetails.setCountry(country);
+            clientDetails.setSchemaName(schemaName);
+            clientDetails.setServerUrl(serverConfig.getServerUrl());
+            clientDetails.setNoOfEmployees(noOfEmployees);
+            clientDetails.setStarDate(LocalDate.now());
+            clientDetails.setEndDate(LocalDate.now().plusDays(365));
+            clientDetails.setPlan(plan);
+            clientDetails.setPrice(price);
             clientDetailsService.createClient(clientDetails);
-            TenantContext.setTenantId(companySchema);
-            EmployeeManagerDTO registeredAdmin = employeeManagerService.addAdmin(companySchema,employeeManagerDTO);
-            return ResponseEntity.ok(registeredAdmin);
+
+            return ResponseEntity.ok(schemaName);
+
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Registration failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Registration failed: " + e.getMessage());
+        } finally {
+            TenantContext.clear();
         }
     }
+
+    @GetMapping(value ="/checkEmployeesLimit/{tenantId}", produces = "application/json")
+    public boolean checkEmployeesLimit(@PathVariable String tenantId){
+        return employeeManagerService.checkEmployeesLimit(tenantId);
+    }
+
+
+
 
 
     @PostMapping("/upload")

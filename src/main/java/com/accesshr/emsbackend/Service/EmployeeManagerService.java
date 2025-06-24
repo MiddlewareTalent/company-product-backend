@@ -48,5 +48,7 @@ public interface EmployeeManagerService {
     List<EmployeeManager> getAllMyColleagues(String managerId);//
 
     EmployeeManager changeProfilePhoto(String employeeId,EmployeeManager employee);
+
+    boolean checkEmployeesLimit(String tenantId);
 }
 

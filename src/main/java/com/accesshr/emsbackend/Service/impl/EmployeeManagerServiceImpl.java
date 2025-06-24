@@ -3,6 +3,7 @@ package com.accesshr.emsbackend.Service.impl;
 import com.accesshr.emsbackend.Dto.EmployeeManagerDTO;
 import com.accesshr.emsbackend.Dto.LoginDTO;
 import com.accesshr.emsbackend.Entity.EmployeeManager;
+import com.accesshr.emsbackend.Repo.ClientDetailsRepository;
 import com.accesshr.emsbackend.Repo.EmployeeManagerRepository;
 import com.accesshr.emsbackend.Service.EmployeeManagerService;
 import com.accesshr.emsbackend.Service.JWT.JWTService;
@@ -21,6 +22,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import com.accesshr.emsbackend.Entity.ClientDetails;
+import com.accesshr.emsbackend.Repo.*;
+import com.accesshr.emsbackend.EmployeeController.Config.*;
 
 @Service
 public class EmployeeManagerServiceImpl implements EmployeeManagerService {
@@ -40,6 +44,20 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
     @Autowired
     private JavaMailSender emailSender;
 
+    @Autowired
+    private ClientDetailsRepository clientDetailsRepository;
+
+    @Override
+    public boolean checkEmployeesLimit(String tenantId){
+        long noOfEmployees=employeeManagerRepository.getNoOfEmployees();
+        TenantContext.setTenantId("public");
+        ClientDetails clientDetails=clientDetailsRepository.findBySchemaName(tenantId);
+        if(noOfEmployees>=clientDetails.getNoOfEmployees()){
+            return false;
+        }
+            return true;
+    }
+
 
     @Override
     public EmployeeManagerDTO addEmployee(EmployeeManagerDTO employeeManagerDTO) {
@@ -54,11 +72,11 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
          String text="Dear " + employeeManagerDTO.getFirstName() + " " + employeeManagerDTO.getLastName() +
                  ",\nPlease open this link: https://company-product-frontend.azurewebsites.net/" + company + "/login";
 
-      SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(employeeManagerDTO.getEmail());
-        message.setSubject("Talentflow registration");
-        message.setText(text);
-        emailSender.send(message);
+//      SimpleMailMessage message = new SimpleMailMessage();
+//        message.setTo(employeeManagerDTO.getEmail());
+//        message.setSubject("Talentflow registration");
+//        message.setText(text);
+//        emailSender.send(message);
 
         return empDto;
     }
