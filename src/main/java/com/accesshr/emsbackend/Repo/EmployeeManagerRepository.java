@@ -28,6 +28,9 @@ public interface EmployeeManagerRepository extends JpaRepository<EmployeeManager
 
     boolean existsByCorporateEmail(String corporateEmail);
 
+    @Query("SELECT COUNT(e) FROM EmployeeManager e ")
+    long getNoOfEmployees();
+
     // Find Employees by their Working Country
     @Query("SELECT e FROM EmployeeManager e WHERE e.workingCountry = :workingCountry ORDER BY e.firstName ASC, e.lastName ASC")
     List<EmployeeManager> getEmployeeManagersByCountry(@Param("workingCountry") String workingCountry);
@@ -46,10 +49,6 @@ public interface EmployeeManagerRepository extends JpaRepository<EmployeeManager
     List<EmployeeManager> findAllEmployeesBYOrder();
 
     @Query("SELECT e FROM EmployeeManager e WHERE e.role!='employee' ORDER BY e.firstName ASC, e.lastName ASC")
-    List<EmployeeManager> getAdminsAndManagers();
-    
-   
-                                                         
-
+    List<EmployeeManager> getAdminsAndManagers();                                              
     
 }

@@ -50,6 +50,12 @@ public class ClientDetailsService {
             update.setCompanyName(clientDetails.getCompanyName());
             update.setEmail(clientDetails.getEmail());
             update.setSchemaName(clientDetails.getSchemaName());
+            update.setNoOfEmployees(clientDetails.getNoOfEmployees());
+            update.setCountry(clientDetails.getCountry());
+            update.setPlan(clientDetails.getPlan());
+            update.setStarDate(clientDetails.getStarDate());
+            update.setEndDate(clientDetails.getEndDate());
+            update.setPrice(clientDetails.getPrice());
 //            update.setTask(clientDetails.isTask());
 //            update.setLeaveManagement(clientDetails.isLeaveManagement());
 //            update.setOrganizationChart(clientDetails.isOrganizationChart());
@@ -57,6 +63,15 @@ public class ClientDetailsService {
             ClientDetailsRepository.save(update);
         }
         return null;
+    }
+
+    public ClientDetails getClientDetailsBySchema(String schemaName){
+      ClientDetails clientDetails = ClientDetailsRepository.findBySchemaName(schemaName);
+      if(clientDetails!=null){
+        return clientDetails;
+      }else{
+        throw new RuntimeException("Schema is not Exist");
+      }
     }
 
     public String deleteClientDetails(Long id){

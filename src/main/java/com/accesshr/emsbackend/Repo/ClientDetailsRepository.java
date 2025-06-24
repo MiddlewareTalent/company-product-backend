@@ -7,4 +7,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ClientDetailsRepository extends JpaRepository<ClientDetails, Long> {
+
+    ClientDetails findBySchemaName(String schemaName);
 }
