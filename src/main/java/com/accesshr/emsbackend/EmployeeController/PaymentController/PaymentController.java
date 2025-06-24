@@ -165,7 +165,7 @@ metadata.put("noOfEmployees", String.valueOf(clientDetails.getNoOfEmployees()));
                 if(session !=null){
                     ClientDetails clientDetails=clientDetailsService.getClientDetailsBySchema(session.getMetadata().get("schemaName"));
                     clientDetails.setPrice(Double.parseDouble(session.getMetadata().get("price")));
-                    clientDetails.setNoOfEmployees(Integer.parseInt(session.getMetadata().get("noOfEmployees")));
+                    clientDetails.setNoOfEmployees(20);
                     clientDetails.setPlan(session.getMetadata().get("plan"));
                     clientDetailsService.updateClientDetails(clientDetails.getId(), clientDetails);
                 }
