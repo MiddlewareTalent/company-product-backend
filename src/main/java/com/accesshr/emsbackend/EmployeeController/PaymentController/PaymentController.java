@@ -157,6 +157,15 @@ public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @
 
         if (session != null && session.getMetadata() != null) {
             String schemaName = session.getMetadata().get("schemaName");
+            String tenantId=schemaName;
+            System.out.print("schema naem"+schemaName);
+            String country=null;
+
+        if (tenantId!=null) {
+            int index = tenantId.indexOf("_");
+            country = index != -1 ? tenantId.substring(0, index) : tenantId;
+        }
+
             if (schemaName != null) {
                 ClientDetails clientDetails = clientDetailsService.getClientDetailsBySchema(schemaName);
                 clientDetails.setPrice(Double.parseDouble(session.getMetadata().get("price")));
