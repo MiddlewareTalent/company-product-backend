@@ -172,7 +172,8 @@ public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @
 
             if (schemaName != null) {
                 ClientDetails clientDetails = clientDetailsService.getClientDetailsBySchema(schemaName);
-                clientDetails.setPrice(Double.parseDouble(session.getMetadata().get("price")));
+                double paidAmount=Double.parseDouble(session.getMetadata().get("price"))/100;
+                clientDetails.setPrice(clientDetails.getPrice()+paidAmount);
                 clientDetails.setNoOfEmployees(Integer.parseInt(session.getMetadata().get("noOfEmployees")));
                 clientDetails.setPlan(session.getMetadata().get("plan"));
                 clientDetailsService.updateClientDetails(clientDetails.getId(), clientDetails);
