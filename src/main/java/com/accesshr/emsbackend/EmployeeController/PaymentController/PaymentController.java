@@ -144,6 +144,8 @@ public class PaymentController {
     public ResponseEntity<String> handleWebhook(@RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
         Stripe.apiKey = stripeApiKey;
+        System.out.println("1");
+        System.out.println("2");
 
         try {
             Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
@@ -162,6 +164,8 @@ public class PaymentController {
 
                 // paymentRepository.save(payment);
                 // }
+                System.out.println(session);
+                System.out.println(session.getMetadata());
                 String tenantId = session.getMetadata().get("schemaName");
                 String country=null;
                 if (tenantId != null) {
