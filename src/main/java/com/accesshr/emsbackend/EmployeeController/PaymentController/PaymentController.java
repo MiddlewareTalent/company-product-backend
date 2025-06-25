@@ -1,5 +1,6 @@
 package com.accesshr.emsbackend.EmployeeController.PaymentController;
 
+import com.accesshr.emsbackend.EmployeeController.Config.TenantContext;
 import com.accesshr.emsbackend.Entity.ClientDetails;
 import com.accesshr.emsbackend.Service.ClientDetailsService;
 import com.stripe.Stripe;
@@ -158,13 +159,16 @@ public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @
         if (session != null && session.getMetadata() != null) {
             String schemaName = session.getMetadata().get("schemaName");
             String tenantId=schemaName;
-            System.out.print("schema naem"+schemaName);
+            System.out.print("schema name"+schemaName);
             String country=null;
 
         if (tenantId!=null) {
             int index = tenantId.indexOf("_");
             country = index != -1 ? tenantId.substring(0, index) : tenantId;
         }
+        TenantContext.setCountry(country);
+        TenantContext.setTenantId("public");
+        System.out.println("country id"+country);
 
             if (schemaName != null) {
                 ClientDetails clientDetails = clientDetailsService.getClientDetailsBySchema(schemaName);
