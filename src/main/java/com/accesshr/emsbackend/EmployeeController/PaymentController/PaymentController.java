@@ -146,6 +146,8 @@ public class PaymentController {
         Stripe.apiKey = stripeApiKey;
         System.out.println("1");
         System.out.println("2");
+        System.out.println(payload);
+        System.out.println(sigHeader);
 
         try {
             Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
