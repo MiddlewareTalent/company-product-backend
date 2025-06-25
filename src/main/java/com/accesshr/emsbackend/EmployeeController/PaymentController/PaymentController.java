@@ -169,13 +169,14 @@ public class PaymentController {
                     country = index != -1 ? tenantId.substring(0, index) : tenantId;
                 }
                 TenantContext.setCountry(country);
-                TenantContext.setTenantId("public");
+                TenantContext.setTenantId(tenantId);
                 if (session != null) {
                     ClientDetails clientDetails = clientDetailsService
                             .getClientDetailsBySchema(session.getMetadata().get("schemaName"));
                     clientDetails.setPrice(Double.parseDouble(session.getMetadata().get("price")));
                     clientDetails.setNoOfEmployees(Integer.parseInt(session.getMetadata().get("noOfEmployees")));
                     clientDetails.setPlan(session.getMetadata().get("plan"));
+                    TenantContext.setTenantId("public");
                     clientDetailsService.updateClientDetails(clientDetails.getId(), clientDetails);
                 }
             }
