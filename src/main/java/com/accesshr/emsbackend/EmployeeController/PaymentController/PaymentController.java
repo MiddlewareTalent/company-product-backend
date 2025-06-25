@@ -1,5 +1,6 @@
 package com.accesshr.emsbackend.EmployeeController.PaymentController;
 
+import com.accesshr.emsbackend.EmployeeController.Config.TenantContext;
 import com.accesshr.emsbackend.Entity.ClientDetails;
 import com.accesshr.emsbackend.Service.ClientDetailsService;
 import com.stripe.Stripe;
@@ -15,14 +16,12 @@ import org.springframework.web.bind.annotation.*;
 import com.stripe.model.Event;
 import com.stripe.net.Webhook;
 
-
-
 import jakarta.annotation.PostConstruct;
 import java.util.*;
 
 @RestController
 @RequestMapping("/api/payment")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@CrossOrigin(origins = { "http://localhost:3000", "http://localhost:5173" })
 
 public class PaymentController {
 
@@ -102,36 +101,37 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
-     @PostMapping("/create-checkout-session")
-    public ResponseEntity<Map<String, Object>> createCheckoutSession(@RequestBody ClientDetails clientDetails) throws StripeException {
+    @PostMapping("/create-checkout-session")
+    public ResponseEntity<Map<String, Object>> createCheckoutSession(@RequestBody ClientDetails clientDetails)
+            throws StripeException {
         Stripe.apiKey = stripeApiKey;
 
         Map<String, String> metadata = new HashMap<>();
         metadata.put("plan", clientDetails.getPlan());
         metadata.put("schemaName", clientDetails.getSchemaName());
         metadata.put("price", String.valueOf(clientDetails.getPrice()));
-metadata.put("noOfEmployees", String.valueOf(clientDetails.getNoOfEmployees()));
+        metadata.put("noOfEmployees", String.valueOf(clientDetails.getNoOfEmployees()));
 
         SessionCreateParams.LineItem lineItem = SessionCreateParams.LineItem.builder()
-            .setPriceData(
-                SessionCreateParams.LineItem.PriceData.builder()
-                    .setCurrency("gbp")
-                    .setUnitAmount((long)clientDetails.getPrice()+0L)
-                    .setProductData(
-                        SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                            .setName(clientDetails.getPlan() + " Plan")
-                            .build())
-                    .build())
-            .setQuantity(1L)
-            .build();
+                .setPriceData(
+                        SessionCreateParams.LineItem.PriceData.builder()
+                                .setCurrency("gbp")
+                                .setUnitAmount((long) clientDetails.getPrice() + 0L)
+                                .setProductData(
+                                        SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                .setName(clientDetails.getPlan() + " Plan")
+                                                .build())
+                                .build())
+                .setQuantity(1L)
+                .build();
 
         SessionCreateParams params = SessionCreateParams.builder()
-            .addLineItem(lineItem)
-            .setMode(SessionCreateParams.Mode.PAYMENT)
-            .putAllMetadata(metadata)
-            .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}")
-            .setCancelUrl(cancelUrl)
-            .build();
+                .addLineItem(lineItem)
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .putAllMetadata(metadata)
+                .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}")
+                .setCancelUrl(cancelUrl)
+                .build();
 
         Session session = Session.create(params);
 
@@ -141,7 +141,8 @@ metadata.put("noOfEmployees", String.valueOf(clientDetails.getNoOfEmployees()));
     }
 
     @PostMapping("/webhook")
-    public ResponseEntity<String> handleWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
+    public ResponseEntity<String> handleWebhook(@RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String sigHeader) {
         Stripe.apiKey = stripeApiKey;
 
         try {
@@ -151,21 +152,29 @@ metadata.put("noOfEmployees", String.valueOf(clientDetails.getNoOfEmployees()));
                 Session session = (Session) event.getDataObjectDeserializer().getObject().orElse(null);
 
                 // if (session != null) {
-                //     PaymentRecord payment = new PaymentRecord();
-                //     payment.setSessionId(session.getId());
-                //     payment.setAmount(session.getAmountTotal());
-                //     payment.setStatus("paid");
-                //     payment.setPlan(session.getMetadata().get("plan"));
-                //     payment.setUserId(session.getMetadata().get("userId"));
-                //     payment.setCompany(session.getMetadata().get("company"));
+                // PaymentRecord payment = new PaymentRecord();
+                // payment.setSessionId(session.getId());
+                // payment.setAmount(session.getAmountTotal());
+                // payment.setStatus("paid");
+                // payment.setPlan(session.getMetadata().get("plan"));
+                // payment.setUserId(session.getMetadata().get("userId"));
+                // payment.setCompany(session.getMetadata().get("company"));
 
-                //     paymentRepository.save(payment);
+                // paymentRepository.save(payment);
                 // }
-
-                if(session !=null){
-                    ClientDetails clientDetails=clientDetailsService.getClientDetailsBySchema(session.getMetadata().get("schemaName"));
+                String tenantId = session.getMetadata().get("schemaName");
+                String country=null;
+                if (tenantId != null) {
+                    int index = tenantId.indexOf("_");
+                    country = index != -1 ? tenantId.substring(0, index) : tenantId;
+                }
+                TenantContext.setCountry(country);
+                TenantContext.setTenantId("public");
+                if (session != null) {
+                    ClientDetails clientDetails = clientDetailsService
+                            .getClientDetailsBySchema(session.getMetadata().get("schemaName"));
                     clientDetails.setPrice(Double.parseDouble(session.getMetadata().get("price")));
-                    clientDetails.setNoOfEmployees(21);
+                    clientDetails.setNoOfEmployees(Integer.parseInt(session.getMetadata().get("noOfEmployees")));
                     clientDetails.setPlan(session.getMetadata().get("plan"));
                     clientDetailsService.updateClientDetails(clientDetails.getId(), clientDetails);
                 }
