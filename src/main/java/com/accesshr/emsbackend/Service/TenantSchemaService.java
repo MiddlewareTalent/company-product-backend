@@ -1,6 +1,7 @@
 package com.accesshr.emsbackend.Service;
 
 import com.accesshr.emsbackend.EmployeeController.Config.CountryDataSourceManager;
+import com.accesshr.emsbackend.EmployeeController.Config.DataSourceConfig;
 import com.accesshr.emsbackend.Entity.*;
 import com.accesshr.emsbackend.exceptions.ResourceNotFoundException;
 import org.hibernate.boot.Metadata;
@@ -22,8 +23,11 @@ public class TenantSchemaService {
 
     private final CountryDataSourceManager countryDataSourceManager;
 
-    public TenantSchemaService(CountryDataSourceManager countryDataSourceManager) {
+    private final DataSourceConfig dataSourceConfig;
+
+    public TenantSchemaService(CountryDataSourceManager countryDataSourceManager, DataSourceConfig dataSourceConfig) {
         this.countryDataSourceManager = countryDataSourceManager;
+        this.dataSourceConfig = dataSourceConfig;
     }
 
     public void createTenant(String schemaName, String country) throws SQLException {
@@ -60,7 +64,7 @@ public class TenantSchemaService {
         String jdbcUrl = "jdbc:mysql://" + config.getServerUrl() + ":3306/" +
                 "?useSSL=true&allowPublicKeyRetrieval=true";
         String sql = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?";
-        try (Connection connection = DriverManager.getConnection(jdbcUrl, config.getDbUsername(), config.getDbPassword());
+        try (Connection connection = DriverManager.getConnection(jdbcUrl, dataSourceConfig.getDbUsername(), dataSourceConfig.getDbPassword());
              PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, "public");
             ResultSet rs = stmt.executeQuery();
@@ -82,7 +86,7 @@ public class TenantSchemaService {
     private void createSchemaIfNotExists(String schemaName, CountryServerConfig config) throws SQLException {
         String jdbcUrl = "jdbc:mysql://" + config.getServerUrl() + ":3306/" +
                 "?useSSL=true&allowPublicKeyRetrieval=true";
-        try (Connection connection = DriverManager.getConnection(jdbcUrl, config.getDbUsername(), config.getDbPassword());
+        try (Connection connection = DriverManager.getConnection(jdbcUrl, dataSourceConfig.getDbUsername(), dataSourceConfig.getDbPassword());
              Statement stmt = connection.createStatement()) {
             stmt.execute("CREATE SCHEMA IF NOT EXISTS `" + schemaName + "`");
         } catch (SQLException e) {
@@ -92,10 +96,11 @@ public class TenantSchemaService {
 
     private void createTablesInSchema(String schemaName, CountryServerConfig config) {
         Map<String, Object> settings = new HashMap<>();
+
         settings.put("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver");
         settings.put("hibernate.connection.url", "jdbc:mysql://" + config.getServerUrl() + ":3306/" + schemaName);
-        settings.put("hibernate.connection.username", config.getDbUsername());
-        settings.put("hibernate.connection.password", config.getDbPassword());
+        settings.put("hibernate.connection.username", dataSourceConfig.getDbUsername());
+        settings.put("hibernate.connection.password", dataSourceConfig.getDbPassword());
         settings.put("hibernate.hbm2ddl.auto", "update");
         settings.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
 
@@ -136,8 +141,8 @@ public class TenantSchemaService {
         Map<String, Object> settings = new HashMap<>();
         settings.put("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver");
         settings.put("hibernate.connection.url", "jdbc:mysql://" + config.getServerUrl() + ":3306/" + schemaName);
-        settings.put("hibernate.connection.username", config.getDbUsername());
-        settings.put("hibernate.connection.password", config.getDbPassword());
+        settings.put("hibernate.connection.username", dataSourceConfig.getDbUsername());
+        settings.put("hibernate.connection.password", dataSourceConfig.getDbPassword());
         settings.put("hibernate.hbm2ddl.auto", "create");
         settings.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
 
