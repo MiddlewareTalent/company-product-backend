@@ -1,7 +1,5 @@
 package com.accesshr.emsbackend.EmployeeController;
 
-import com.accesshr.emsbackend.Dto.EmployeeManagerDTO;
-import com.accesshr.emsbackend.Dto.LoginDTO;
 import com.accesshr.emsbackend.EmployeeController.Config.TenantContext;
 import com.accesshr.emsbackend.Entity.ClientDetails;
 import com.accesshr.emsbackend.Entity.CountryServerConfig;
@@ -25,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.azure.core.util.Context;
 import com.azure.storage.blob.models.PublicAccessType;
 import com.azure.storage.blob.models.BlobContainerAccessPolicies;
+import com.accesshr.emsbackend.Dto.*;
 
 
 import java.io.IOException;
@@ -56,6 +55,18 @@ public class EmployeeManagerController {
         this.employeeManagerRepository = employeeManagerRepository;
         this.tenantSchemaService=tenantSchemaService;
         this.clientDetailsService = clientDetailsService;
+    }
+
+    @GetMapping(value = "/getEmployeeCompanyDetails/{employeeId}", produces = "application/json")
+    public EmployeeCompanyDetailsDTO getEmployeeCompanyDetails(@PathVariable String employeeId){
+        EmployeeManager employeeManager = employeeManagerService.getEmployeeById(employeeId);
+        String schemaName=TenantContext.getTenantId();
+        TenantContext.setTenantId("public");
+        ClientDetails clientDetails = clientDetailsService.getClientDetailsBySchema(schemaName);
+        EmployeeCompanyDetailsDTO employeeCompanyDetailsDTO=new EmployeeCompanyDetailsDTO();
+        employeeCompanyDetailsDTO.setClientDetails(clientDetails);
+        employeeCompanyDetailsDTO.setEmployeeManager(employeeManager);
+        return employeeCompanyDetailsDTO;
     }
 
 

@@ -38,10 +38,11 @@ public class ClientDetails {
     private double price;
 
 
-//    private boolean task=false;
-//    private boolean organizationChart=false;
-//    private boolean leaveManagement=false;
-//    private boolean timeSheet=false;
+   private boolean task=false;
+   private boolean organizationChart=false;
+   private boolean leaveManagement=false;
+   private boolean timeSheet=false;
+
 
 
     public Long getId() {
@@ -147,4 +148,5 @@ public class ClientDetails {
     public void setPrice(double price) {
         this.price = price;
     }
+
 }
