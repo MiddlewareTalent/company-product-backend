@@ -100,7 +100,7 @@ public class PaymentController {
 
         SessionCreateParams params = SessionCreateParams.builder()
                 .addLineItem(lineItem)
-                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
                 .putAllMetadata(metadata)
                 .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}")
                 .setCancelUrl(cancelUrl)

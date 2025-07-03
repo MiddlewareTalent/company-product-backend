@@ -38,8 +38,8 @@ public class ClientDetails {
     private double price;
 
 
-//    private boolean task=false;
-//    private boolean organizationChart=false;
-//    private boolean leaveManagement=false;
-//    private boolean timeSheet=false;
+   private boolean task=false;
+   private boolean organizationChart=false;
+   private boolean leaveManagement=false;
+   private boolean timeSheet=false;
 }
