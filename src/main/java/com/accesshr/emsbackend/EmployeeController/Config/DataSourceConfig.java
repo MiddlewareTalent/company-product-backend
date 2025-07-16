@@ -30,7 +30,7 @@ public class DataSourceConfig {
     @PostConstruct
     public void fetchSecretsFromKeyVault() {
         SecretClient secretClient = new SecretClientBuilder()
-                .vaultUrl("https://testingkeyvaultmtl.vault.azure.net/")
+                .vaultUrl("https://talentflowkeyvault.vault.azure.net/")
                 .credential(new DefaultAzureCredentialBuilder().build())
                 .buildClient();
 
