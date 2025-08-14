@@ -198,22 +198,20 @@ public class TimesheetService {
 
     }
 
-    public List<TimesheetDTO> getTimesheetByStartAndEndDate(LocalDate startDate, LocalDate endDate){
+    public List<TimesheetDTO> getTimesheetByStartAndEndDate( String managerId,LocalDate startDate, LocalDate endDate){
         if (startDate == null || endDate == null) {
             throw new IllegalArgumentException("Start date and end date must not be null.");
         }
- 
+
         // Ensure startDate is before or equal to endDate
         if (startDate.isAfter(endDate)) {
             throw new IllegalArgumentException("Start date must not be after end date.");
         }
- 
-        // Log the date range for debugging
-        System.out.println("Start Date: " + startDate);
-        System.out.println("End Date: " + endDate);
-        List<Timesheet> existingTimesheets=timesheetRepository.findByStartAndEndDate(startDate, endDate);
-        System.out.println("Fetched Timesheets: " + existingTimesheets);
- 
+        if (managerId==null){
+            throw new RuntimeException("Manager Id not Found");
+        }
+        List<Timesheet> existingTimesheets=timesheetRepository.findByStartAndEndDate(managerId,startDate, endDate);
+
         // Convert the fetched timesheets to DTOs and return
         return convertToTimesheetDTOs(existingTimesheets);
     }

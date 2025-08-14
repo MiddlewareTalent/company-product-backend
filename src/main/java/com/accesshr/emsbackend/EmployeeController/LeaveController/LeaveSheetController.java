@@ -17,11 +17,11 @@ public class LeaveSheetController {
     private LeaveSheetService leaveSheetService;
 
     @PostMapping(value = "/submitSheet", produces = "application/json")
-    public ResponseEntity<?> submitSheet(@RequestBody LeaveSheet leaveSheet) {
+    public ResponseEntity<?> submitSheet(@RequestBody List<LeaveSheet> leaveSheet) {
         try {
-            LeaveSheet saveSheet = leaveSheetService.createLeaveSheet(leaveSheet);
+            List<LeaveSheet> saveSheet = leaveSheetService.createLeaveSheet(leaveSheet);
             return ResponseEntity.ok(saveSheet);
-        }catch (Exception e) {
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An Error Occurred");
         }
     }
@@ -30,6 +30,12 @@ public class LeaveSheetController {
     public ResponseEntity<?> updateLeaveSheet(@PathVariable int id, @RequestBody LeaveSheet leaveSheet) {
         LeaveSheet updateSheet = leaveSheetService.updateLeaveSheet(id, leaveSheet);
         return ResponseEntity.ok(updateSheet);
+    }
+
+    @DeleteMapping("/deleteById/{id}")
+    public ResponseEntity<String> deleteById(@PathVariable int id) {
+        leaveSheetService.deleteById(id);
+        return ResponseEntity.ok("Leave sheet id deleted successfully");
     }
 
     @GetMapping("/getSheets")

@@ -27,9 +27,6 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, Long> {
 
     Optional<LeaveRequest> findByEmployeeIdAndLeaveStartDateAndLeaveEndDate(String employeeId, LocalDate leaveStartDate, LocalDate leaveEndDate);
 
-    long countByEmployeeIdAndLeaveType(String employeeId, LeaveRequest.LeaveType leaveType);
-
-    Optional<LeaveRequest> findByEmployeeIdAndLeaveType(String employeeId, LeaveRequest.LeaveType leaveType);
 
 //    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employeeId = :employeeId " +
 //            "AND lr.leaveStartDate <= :leaveEndDate AND lr.leaveEndDate >= :leaveStartDate")
@@ -60,22 +57,49 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, Long> {
             @Param("endDate") LocalDate endDate);
 
 
+//    @Query("SELECT SUM(lr.duration) " +
+//            "FROM LeaveRequest lr " +
+//            "WHERE lr.employeeId = :employeeId AND lr.leaveType = :leaveType " +
+//            "AND lr.leaveStatus != 'REJECTED'")
+//    Optional<Integer> getTotalLeaveDaysByEmployeeIdAndLeaveType(@Param("employeeId") String employeeId,
+//                                                                @Param("leaveType") LeaveRequest.LeaveType leaveType);
 
-    @Query("SELECT SUM(lr.duration) " +
-            "FROM LeaveRequest lr " +
-            "WHERE lr.employeeId = :employeeId AND lr.leaveType = :leaveType " +
+
+    @Query("SELECT SUM(lr.duration) FROM LeaveRequest lr " +
+            "WHERE lr.employeeId = :employeeId " +
+            "AND lr.leaveSheet.leaveType = :leaveType " +
             "AND lr.leaveStatus != 'REJECTED'")
-    Optional<Integer> getTotalLeaveDaysByEmployeeIdAndLeaveType(@Param("employeeId") String employeeId,
-                                                                @Param("leaveType") LeaveRequest.LeaveType leaveType);
+    Optional<Double> getTotalLeaveDaysByEmployeeIdAndLeaveType(@Param("employeeId") String employeeId, @Param("leaveType") String leaveType);
 
     @Modifying
     @Transactional
     @Query("DELETE FROM LeaveRequest lr WHERE YEAR(lr.leaveStartDate) < :year")
     void resetLeaveBalancesForAllEmployees(@Param("year") int year);
 
+//    @Query("SELECT SUM(lr.duration) FROM LeaveRequest lr " +
+//            "WHERE lr.employeeId = :employeeId AND lr.leaveType = :leaveType " +
+//            "AND lr.leaveStatus = 'APPROVED' AND lr.LOP = false")
+//    Optional<Integer> getApprovedPaidLeaveDays(@Param("employeeId") String employeeId,
+//                                               @Param("leaveType") LeaveRequest.LeaveType leaveType);
+
+
     @Query("SELECT SUM(lr.duration) FROM LeaveRequest lr " +
-            "WHERE lr.employeeId = :employeeId AND lr.leaveType = :leaveType " +
-            "AND lr.leaveStatus = 'APPROVED' AND lr.LOP = false")
-    Optional<Integer> getApprovedPaidLeaveDays(@Param("employeeId") String employeeId,
-                                               @Param("leaveType") LeaveRequest.LeaveType leaveType);
+            "WHERE lr.employeeId = :employeeId " +
+            "AND lr.leaveSheet.leaveType = :leaveType " +
+            "AND lr.leaveStatus = 'APPROVED' " +
+            "AND lr.LOP = false")
+    Optional<Double> getApprovedPaidLeaves(@Param("employeeId") String employeeId, @Param("leaveType") String leaveType);
+
+
+    @Query("SELECT SUM(lr.duration) FROM LeaveRequest lr " +
+            "WHERE lr.employeeId = :employeeId AND lr.leaveSheet.leaveType = :leaveType " +
+            "AND lr.leaveStatus = 'APPROVED' AND lr.LOP = true")
+    Optional<Double> getApprovedLOPDays(@Param("employeeId") String employeeId, @Param("leaveType") String leaveType);
+
+
+//    @Query("SELECT SUM(lr.duration) FROM LeaveRequest lr " +
+//            "WHERE lr.employeeId = :employeeId AND lr.leaveType = :leaveType " +
+//            "AND lr.leaveStatus = 'APPROVED' AND lr.LOP = true")
+//    Optional<Double> getApprovedLOPDays(@Param("employeeId") String employeeId,
+//                                        @Param("leaveType") LeaveRequest.LeaveType leaveType);
 }

@@ -2,9 +2,13 @@ package com.accesshr.emsbackend.EmployeeController.LeaveController;
 
 import com.accesshr.emsbackend.EmployeeController.Config.TenantContext;
 import com.accesshr.emsbackend.Entity.LeaveRequest;
+import com.accesshr.emsbackend.Entity.LeaveSheet;
+import com.accesshr.emsbackend.Repo.LeaveRepo.LeaveSheetRepository;
 import com.accesshr.emsbackend.Service.LeaveService.LeaveRequestServiceImpl;
 import com.accesshr.emsbackend.Util.HolidaysUtil;
 import com.accesshr.emsbackend.exceptions.ResourceNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -15,32 +19,24 @@ import org.springframework.web.multipart.MultipartFile;
 import com.azure.storage.blob.*;
 import com.azure.storage.blob.models.BlobProperties;
 import com.azure.storage.blob.models.BlobStorageException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.net.URL;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @CrossOrigin
 @RestController
 @RequestMapping("/api/leaves")
 public class LeaveRequestController {
 
+    private static final Logger logger = LoggerFactory.getLogger(LeaveRequestController.class);
+
     @Autowired
     private LeaveRequestServiceImpl leaveRequestServiceImpl;
+
+    @Autowired
+    private LeaveSheetRepository leaveSheetRepository;
 
     @Value("${azure.storage.connection-string}")
     private String connectionString;
@@ -57,17 +53,17 @@ public class LeaveRequestController {
             @RequestParam("managerId") String managerId,
             @RequestParam("managerEmail") String managerEmail,
             @RequestParam(value = "comments", required = false) String comments,
-            @RequestParam(value="durationType", required = false) String durationType,
+            @RequestParam(value = "durationType", required = false) String durationType,
             @RequestParam(value = "duration", required = false) Double duration,
-            @RequestParam(value = "LOP", required = false) boolean LOP,
+            @RequestParam(value = "LOP", required = false, defaultValue = "false") boolean LOP,
             @RequestParam("leaveStartDate") LocalDate leaveStartDate,
             @RequestParam("leaveEndDate") LocalDate leaveEndDate,
             @RequestParam(value = "leaveReason", required = false) String leaveReason,
-            @RequestParam(value = "leaveStatus", required = false) LeaveRequest.LeaveStatus leaveStatus,
-            @RequestParam(value = "leaveType", required = false) LeaveRequest.LeaveType leaveType,
+            @RequestParam(value = "leaveType") String leaveType,
             @RequestParam(value = "medicalDocument", required = false) MultipartFile medicalDocument) throws IOException {
+        logger.info("Submitting leave request for employeeId: {}, from {} to {}", employeeId, leaveStartDate, leaveEndDate);
         try {
-            LeaveRequest leaveRequest=new LeaveRequest();
+            LeaveRequest leaveRequest = new LeaveRequest();
             leaveRequest.setEmployeeId(employeeId);
             leaveRequest.setFirstName(firstName);
             leaveRequest.setLastName(lastName);
@@ -75,59 +71,68 @@ public class LeaveRequestController {
             leaveRequest.setManagerId(managerId);
             leaveRequest.setManagerEmail(managerEmail);
             leaveRequest.setComments(comments);
-            leaveRequest.setLeaveType(leaveType);
             leaveRequest.setLeaveStartDate(leaveStartDate);
             leaveRequest.setLeaveEndDate(leaveEndDate);
             leaveRequest.setLOP(LOP);
             leaveRequest.setLeaveReason(leaveReason);
-            leaveRequest.setLeaveStatus(leaveStatus);
-            leaveRequest.setLeaveType(leaveType);
 //            leaveRequest.setDuration(duration);
 
-            if (leaveType == LeaveRequest.LeaveType.SICK) {
+            Optional<LeaveSheet> optionalLeaveSheet = leaveSheetRepository.findByLeaveType(leaveType);
+            if (optionalLeaveSheet.isEmpty()) {
+                throw new ResourceNotFoundException("LeaveSheet not found for leaveType: " + leaveType);
+            }
+            leaveRequest.setLeaveSheet(optionalLeaveSheet.get());
+
+            if ("SICK".equalsIgnoreCase(leaveType)) {
                 double requestedDays = leaveRequest.calculateBusinessDays(
                         leaveStartDate, leaveEndDate, HolidaysUtil.getNationalHolidays(leaveStartDate.getYear())
                 );
+                logger.debug("Sick leave requested for {} business days", requestedDays);
                 if (requestedDays > 2 && medicalDocument != null) {
+                    logger.info("Uploading medical document for employeeId: {}", employeeId);
                     String savedFilePath = uploadFIle(medicalDocument, "medicalDocument");
                     leaveRequest.setMedicalDocument(savedFilePath);
                 }
             }
             LeaveRequest savedRequest = leaveRequestServiceImpl.submitLeaveRequest(leaveRequest);
+            logger.info("Leave request submitted successfully for employeeId: {}", employeeId);
             return new ResponseEntity<>(savedRequest, HttpStatus.OK);
-        }catch (ResourceNotFoundException e){
+        } catch (ResourceNotFoundException e) {
+            logger.warn("ResourceNotFoundException during leave request for employeeId: {} - {}", employeeId, e.getMessage());
             return new ResponseEntity<>(e.getMap(), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
+            logger.error("Exception during leave request for employeeId: {} - {}", employeeId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 
     public String uploadFIle(MultipartFile file, String caption) throws IOException {
         String tenantId = TenantContext.getTenantId();
-        tenantId=tenantId.replace("_","-");
+        tenantId = tenantId.replace("_", "-");
         if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalStateException("Tenant ID is missing from context");
         }
- 
+
         String containerForTenant = tenantId.toLowerCase() + "-container";
         String blobFilename = file.getOriginalFilename();
- 
+
         BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
                 .connectionString(connectionString)
                 .buildClient();
- 
+
         BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerForTenant);
- 
+
         // Create container if it does not exist
         if (!containerClient.exists()) {
             containerClient.create();
         }
- 
+
         BlobClient blobClient = containerClient.getBlobClient(blobFilename);
         blobClient.upload(file.getInputStream(), file.getSize(), true);
- 
+
         return blobClient.getBlobUrl();
     }
+
     private String saveFile(MultipartFile file, String fileType) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("The file cannot be null or empty.");
@@ -166,7 +171,7 @@ public class LeaveRequestController {
     }
 
     // Approving a leave request
-    @PutMapping( "/approve/{id}")
+    @PutMapping("/approve/{id}")
     public ResponseEntity<String> approveLeaveRequest(@PathVariable Long id) {
         leaveRequestServiceImpl.approveLeaveRequest(id);
         return ResponseEntity.ok("Leave Request Approved");
@@ -186,8 +191,8 @@ public class LeaveRequestController {
     }
 
     @GetMapping(value = "/getStatus/{employeeId}", produces = "application/json")
-    public LinkedHashMap<String, Long> getEmpAndLeaveStatus(@PathVariable String employeeId){
-       return leaveRequestServiceImpl.getEmpAndLeaveStatus(employeeId);
+    public LinkedHashMap<String, Long> getEmpAndLeaveStatus(@PathVariable String employeeId) {
+        return leaveRequestServiceImpl.getEmpAndLeaveStatus(employeeId);
     }
 
     // @DeleteMapping("/delete/{id}")
@@ -200,18 +205,18 @@ public class LeaveRequestController {
     public ResponseEntity<String> deleteLeaveRequest(@PathVariable Long id) {
         try {
             String tenantId = TenantContext.getTenantId(); // Set the tenant context (thread-local)
-            tenantId=tenantId.replace("_","-");
+            tenantId = tenantId.replace("_", "-");
             if (tenantId == null || tenantId.isBlank()) {
                 throw new IllegalStateException("Tenant ID is missing from context");
             }
- 
+
             LeaveRequest leaveRequest = leaveRequestServiceImpl.getLeaveRequestById(id);
             String medicalDocumentUrl = leaveRequest.getMedicalDocument();
- 
+
             if (medicalDocumentUrl != null && !medicalDocumentUrl.isBlank()) {
                 deleteBlobForTenant(medicalDocumentUrl, tenantId); // Pass tenant ID
             }
- 
+
             String response = leaveRequestServiceImpl.deleteLeaveRequest(id);
             return ResponseEntity.ok(response);
         } catch (ResourceNotFoundException e) {
@@ -226,16 +231,16 @@ public class LeaveRequestController {
     private void deleteBlobForTenant(String blobUrl, String tenantId) {
         try {
             String containerForTenant = tenantId.toLowerCase() + "-container";
- 
+
             BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
                     .connectionString(connectionString)
                     .buildClient();
- 
+
             BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerForTenant);
             // Extract blob name from URL
             URL url = new URL(blobUrl);
             String blobName = url.getPath().substring(url.getPath().lastIndexOf("/") + 1);
- 
+
             BlobClient blobClient = containerClient.getBlobClient(blobName);
             if (blobClient.exists()) {
                 blobClient.delete();
@@ -249,7 +254,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/remaining-leaves")
-    public ResponseEntity<?> getRemainingLeaveDays(@RequestParam("employeeId") String employeeId,@RequestParam("leaveType") LeaveRequest.LeaveType leaveType) {
+    public ResponseEntity<?> getRemainingLeaveDays(@RequestParam("employeeId") String employeeId, @RequestParam("leaveType") String leaveType) {
         double remainingLeaveDays = leaveRequestServiceImpl.getRemainingLeaveDays(employeeId, leaveType);
         return new ResponseEntity<>(remainingLeaveDays, HttpStatus.OK);
     }
@@ -283,7 +288,7 @@ public class LeaveRequestController {
         LeaveRequest.LeaveStatus leaveStatus;
         try {
             leaveStatus = LeaveRequest.LeaveStatus.valueOf(status.toUpperCase());
-        }catch (Exception e) {
+        } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
         List<LeaveRequest> leaveRequests = leaveRequestServiceImpl.getLeaveRequestByEmployeeStatus(employeeId, leaveStatus);
@@ -342,6 +347,5 @@ public class LeaveRequestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
-
 }
 

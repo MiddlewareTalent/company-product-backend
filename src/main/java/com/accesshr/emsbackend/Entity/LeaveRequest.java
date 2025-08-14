@@ -24,21 +24,60 @@ public class LeaveRequest {
     private String employeeId;
     private String firstName;
     private String lastName;
-
-
     private String email;
-
     private String managerId;
-    
     private String managerEmail;
-
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate leaveStartDate;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate leaveEndDate;
-
     private String leaveReason;
+    private boolean LOP;
+    private Double lopDays;
+    private Double duration;
+    private String durationType;
+    private String comments;
+    private String medicalDocument;
+    @Enumerated(EnumType.STRING)
+    private LeaveStatus leaveStatus;
+    @ManyToOne
+    @JoinColumn(name = "leave_sheet_id")
+    private LeaveSheet leaveSheet;
+
+    public enum LeaveStatus {
+        PENDING,
+        APPROVED,
+        REJECTED
+    }
+
+
+    public void calculateDuration(List<LocalDate> nationalHolidays) {
+        if (leaveStartDate == null || leaveEndDate == null) {
+            throw new ResourceNotFoundException("Leave start and end dates cannot be null.");
+        }
+
+        if (leaveEndDate.isBefore(leaveStartDate)) {
+            throw new ResourceNotFoundException("Leave end date cannot be before the start date.");
+        }
+
+        // Calculate business days excluding weekends and national holidays
+        double businessDays = calculateBusinessDays(leaveStartDate, leaveEndDate, nationalHolidays);
+
+        // Each business day is equivalent to 8 working hours
+        int workingHoursPerDay = 8;
+        int totalWorkingHours = (int) businessDays * workingHoursPerDay;
+
+        // Store the calculated duration
+        this.duration =  businessDays; // Total business days
+        this.durationType = "Days"; // Indicates the unit used
+    }
+
+    public double calculateBusinessDays(LocalDate startDate, LocalDate endDate, List<LocalDate> nationalHolidays) {
+        return startDate.datesUntil(endDate.plusDays(1)) // Inclusive of endDate
+                .filter(date -> !nationalHolidays.contains(date))
+                .count();
+    }
 
     public Long getId() {
         return id;
@@ -120,20 +159,20 @@ public class LeaveRequest {
         this.leaveReason = leaveReason;
     }
 
-    public com.accesshr.emsbackend.Entity.LeaveRequest.LeaveType getLeaveType() {
-        return leaveType;
-    }
-
-    public void setLeaveType(com.accesshr.emsbackend.Entity.LeaveRequest.LeaveType leaveType) {
-        this.leaveType = leaveType;
-    }
-
     public boolean isLOP() {
         return LOP;
     }
 
     public void setLOP(boolean LOP) {
         this.LOP = LOP;
+    }
+
+    public Double getLopDays() {
+        return lopDays;
+    }
+
+    public void setLopDays(Double lopDays) {
+        this.lopDays = lopDays;
     }
 
     public Double getDuration() {
@@ -156,14 +195,6 @@ public class LeaveRequest {
         return comments;
     }
 
-    public Double getLopDays() {
-        return lopDays;
-    }
-
-    public void setLopDays(Double lopDays) {
-        this.lopDays = lopDays;
-    }
-
     public void setComments(String comments) {
         this.comments = comments;
     }
@@ -176,73 +207,19 @@ public class LeaveRequest {
         this.medicalDocument = medicalDocument;
     }
 
-    public com.accesshr.emsbackend.Entity.LeaveRequest.LeaveStatus getLeaveStatus() {
+    public LeaveStatus getLeaveStatus() {
         return leaveStatus;
     }
 
-    public void setLeaveStatus(com.accesshr.emsbackend.Entity.LeaveRequest.LeaveStatus leaveStatus) {
+    public void setLeaveStatus(LeaveStatus leaveStatus) {
         this.leaveStatus = leaveStatus;
     }
 
-    @Enumerated(EnumType.STRING)
-    private LeaveType leaveType;
-    private boolean LOP;
-    private Double lopDays;
-    private Double duration;
-    private String durationType;
-    private String comments;
-
-    private String medicalDocument;
-
-    @Enumerated(EnumType.STRING)
-    private LeaveStatus leaveStatus;
-
-    public enum LeaveStatus {
-        PENDING,
-        APPROVED,
-        REJECTED
+    public LeaveSheet getLeaveSheet() {
+        return leaveSheet;
     }
 
-    public enum LeaveType{
-        SICK,
-        VACATION,
-        CASUAL,
-        MARRIAGE,
-        PATERNITY,
-        MATERNITY,
-        OTHERS
-    }
-
-
-    public void calculateDuration(List<LocalDate> nationalHolidays) {
-        if (leaveStartDate == null || leaveEndDate == null) {
-            throw new ResourceNotFoundException("Leave start and end dates cannot be null.");
-        }
-
-        if (leaveEndDate.isBefore(leaveStartDate)) {
-            throw new ResourceNotFoundException("Leave end date cannot be before the start date.");
-        }
-
-        // Calculate business days excluding weekends and national holidays
-        double businessDays = calculateBusinessDays(leaveStartDate, leaveEndDate, nationalHolidays);
-
-        // Each business day is equivalent to 8 working hours
-        int workingHoursPerDay = 8;
-        int totalWorkingHours = (int) businessDays * workingHoursPerDay;
-
-        // Store the calculated duration
-        this.duration =  businessDays; // Total business days
-        this.durationType = "Days"; // Indicates the unit used
-    }
-
-    public double calculateBusinessDays(LocalDate startDate, LocalDate endDate, List<LocalDate> nationalHolidays) {
-        return startDate.datesUntil(endDate.plusDays(1)) // Inclusive of endDate
-                .filter(date -> !isWeekend(date) && !nationalHolidays.contains(date))
-                .count();
-    }
-
-    private boolean isWeekend(LocalDate date) {
-        DayOfWeek dayOfWeek = date.getDayOfWeek();
-        return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+    public void setLeaveSheet(LeaveSheet leaveSheet) {
+        this.leaveSheet = leaveSheet;
     }
 }
