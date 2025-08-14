@@ -22,6 +22,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
 import com.accesshr.emsbackend.Entity.ClientDetails;
 import com.accesshr.emsbackend.Repo.*;
 import com.accesshr.emsbackend.EmployeeController.Config.*;
@@ -48,14 +49,14 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
     private ClientDetailsRepository clientDetailsRepository;
 
     @Override
-    public boolean checkEmployeesLimit(String tenantId){
-        long noOfEmployees=employeeManagerRepository.getNoOfEmployees();
+    public boolean checkEmployeesLimit(String tenantId) {
+        long noOfEmployees = employeeManagerRepository.getNoOfEmployees();
         TenantContext.setTenantId("public");
-        ClientDetails clientDetails=clientDetailsRepository.findBySchemaName(tenantId);
-        if(noOfEmployees>=clientDetails.getNoOfEmployees()){
+        ClientDetails clientDetails = clientDetailsRepository.findBySchemaName(tenantId);
+        if (noOfEmployees >= clientDetails.getNoOfEmployees()) {
             return false;
         }
-            return true;
+        return true;
     }
 
 
@@ -68,9 +69,9 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
     public EmployeeManagerDTO addAdmin(String company, EmployeeManagerDTO employeeManagerDTO) {
         // Set the role to Admin
         employeeManagerDTO.setRole("admin");
-        EmployeeManagerDTO empDto=saveEmployee(employeeManagerDTO);
-         String text="Dear " + employeeManagerDTO.getFirstName() + " " + employeeManagerDTO.getLastName() +
-                 ",\nPlease open this link: https://company-product-frontend.azurewebsites.net/" + company + "/login";
+        EmployeeManagerDTO empDto = saveEmployee(employeeManagerDTO);
+        String text = "Dear " + employeeManagerDTO.getFirstName() + " " + employeeManagerDTO.getLastName() +
+                ",\nPlease open this link: https://company-product-frontend.azurewebsites.net/" + company + "/login";
 
 //      SimpleMailMessage message = new SimpleMailMessage();
 //        message.setTo(employeeManagerDTO.getEmail());
@@ -353,35 +354,56 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
 
     }
 
-    public List<EmployeeManager> alsoWorkingWith(String empId, String workingCountry) throws Exception {
+//    public List<EmployeeManager> alsoWorkingWith(String empId, String workingCountry) throws Exception {
+//
+//        List<EmployeeManager> emp1 = employeeManagerRepository.findByReportingTo(empId);
+//        List<EmployeeManager> emp2 = findOrigin(empId);
+//        List<EmployeeManager> emp3 = employeeManagerRepository.findAll();
+//
+//        // Merge emp1 and emp2 lists
+//        List<EmployeeManager> mergedEmpList = new ArrayList<>(emp1);
+//        mergedEmpList.addAll(emp2);
+//        List<EmployeeManager> emp4;
+//        System.out.println(workingCountry);
+//
+//        if (workingCountry.equals("all")) {
+//
+//            emp4 = emp3.stream()
+//                    .filter(emp -> emp.getEmployeeId() != null)
+//                    // Filter out employees in the merged list (emp1 + emp2)
+//                    .filter(emp -> mergedEmpList.stream().noneMatch(e -> e.getEmployeeId() != null && e.getEmployeeId().equals(emp.getEmployeeId())))
+//
+//                    .collect(Collectors.toList());
+//        } else {
+//            emp4 = emp3.stream()
+//                    .filter(emp -> emp.getEmployeeId() != null)
+//                    // Filter out employees in the merged list (emp1 + emp2)
+//                    .filter(emp -> mergedEmpList.stream().noneMatch(e -> e.getEmployeeId() != null && e.getEmployeeId().equals(emp.getEmployeeId())))
+//                    .filter(emp -> emp.getWorkingCountry().toLowerCase().equals(workingCountry.toLowerCase()))
+//                    .collect(Collectors.toList());
+//        }
+//        return emp4.size() <= 16 ? emp4 : emp4.subList(0, 16);
+//    }
 
-        List<EmployeeManager> emp1 = employeeManagerRepository.findByReportingTo(empId);
-        List<EmployeeManager> emp2 = findOrigin(empId);
-        List<EmployeeManager> emp3 = employeeManagerRepository.findAll();
+    public List<EmployeeManager> alsoWorkingWith(String empId, String workingCountry) {
 
-        // Merge emp1 and emp2 lists
-        List<EmployeeManager> mergedEmpList = new ArrayList<>(emp1);
-        mergedEmpList.addAll(emp2);
-        List<EmployeeManager> emp4;
-        System.out.println(workingCountry);
+        EmployeeManager employee = employeeManagerRepository.findByEmployeeId(empId);
+        if (employee == null || employee.getReportingTo() == null) {
+            return Collections.emptyList();
+        }
+
+        EmployeeManager manager = employeeManagerRepository.findByEmployeeId(employee.getReportingTo());
+        if (manager == null) {
+            return Collections.emptyList();
+        }
 
         if (workingCountry.equals("all")) {
-
-            emp4 = emp3.stream()
-                    .filter(emp -> emp.getEmployeeId() != null)
-                    // Filter out employees in the merged list (emp1 + emp2)
-                    .filter(emp -> mergedEmpList.stream().noneMatch(e -> e.getEmployeeId() != null && e.getEmployeeId().equals(emp.getEmployeeId())))
-
-                    .collect(Collectors.toList());
+            return employeeManagerRepository.findByReportingTo(manager.getEmployeeId());
         } else {
-            emp4 = emp3.stream()
-                    .filter(emp -> emp.getEmployeeId() != null)
-                    // Filter out employees in the merged list (emp1 + emp2)
-                    .filter(emp -> mergedEmpList.stream().noneMatch(e -> e.getEmployeeId() != null && e.getEmployeeId().equals(emp.getEmployeeId())))
-                    .filter(emp -> emp.getWorkingCountry().toLowerCase().equals(workingCountry.toLowerCase()))
-                    .collect(Collectors.toList());
+            List<EmployeeManager> emp1 = employeeManagerRepository.findReportingTOByWorkingCountry(manager.getEmployeeId(), workingCountry);
+            return emp1;
+
         }
-        return emp4.size() <= 16 ? emp4 : emp4.subList(0, 16);
     }
 
     public EmployeeManager changePassword(String employeeId, String newPassword) {
@@ -444,7 +466,7 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
 
     @Override
     public EmployeeManager changeProfilePhoto(String employeeId, EmployeeManager employee) {
-       return employeeManagerRepository.save(employee);
+        return employeeManagerRepository.save(employee);
 
     }
 

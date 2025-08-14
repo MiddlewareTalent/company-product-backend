@@ -27,9 +27,6 @@ public class TimesheetController {
     @Autowired
     private TimesheetEmailService timesheetEmailService;
 
-
-
-
     // Endpoint to create a new timesheet
     @PostMapping
     public ResponseEntity<TimesheetDTO> createTimesheets(@RequestBody TimesheetDTO timesheetDTO) {
@@ -180,15 +177,15 @@ public class TimesheetController {
     @GetMapping("/totalList/employeeId/{employeeId}/startDate/{startDate}/endDate/{endDate}")
     public List<TimesheetDTO> getTotalTimesheetsByEmployeeId(@PathVariable String employeeId,
                                                              @PathVariable LocalDate startDate,
-                                                             @PathVariable LocalDate endDate){
-        return timesheetService.getTotalTimesheets(employeeId,startDate,endDate);
+                                                             @PathVariable LocalDate endDate) {
+        return timesheetService.getTotalTimesheets(employeeId, startDate, endDate);
     }
 
-    @GetMapping("/totalList/startDate/{startDate}/endDate/{endDate}")
-    public List<TimesheetDTO> getTotalTimesheetsByDate(@PathVariable LocalDate startDate,
-                                                       @PathVariable LocalDate endDate)
-    {
-        return timesheetService.getTimesheetByStartAndEndDate(startDate,endDate);
+    @GetMapping("/totalList/{managerId}/startDate/{startDate}/endDate/{endDate}")
+    public List<TimesheetDTO> getTotalTimesheetsByDate(@PathVariable String managerId,
+                                                       @PathVariable LocalDate startDate,
+                                                       @PathVariable LocalDate endDate) {
+        return timesheetService.getTimesheetByStartAndEndDate(managerId, startDate, endDate);
     }
 
 

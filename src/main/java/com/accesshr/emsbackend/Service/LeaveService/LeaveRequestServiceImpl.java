@@ -1,12 +1,15 @@
 package com.accesshr.emsbackend.Service.LeaveService;
 
+import com.accesshr.emsbackend.Entity.Holiday;
 import com.accesshr.emsbackend.Entity.LeaveRequest;
 import com.accesshr.emsbackend.Entity.LeaveSheet;
+import com.accesshr.emsbackend.Repo.Holiday.HolidayRepo;
 import com.accesshr.emsbackend.Repo.LeaveRepo.LeaveRequestRepo;
 import com.accesshr.emsbackend.Repo.LeaveRepo.LeaveSheetRepository;
 import com.accesshr.emsbackend.Util.HolidaysUtil;
 import com.accesshr.emsbackend.exceptions.ResourceNotFoundException;
-import lombok.Setter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,9 +21,13 @@ import java.util.Optional;
 @Service
 public class LeaveRequestServiceImpl implements LeaveRequestService {
 
+    private static final Logger logger = LoggerFactory.getLogger(LeaveRequestServiceImpl.class);
+
     // Injecting EmailService for sending notifications
     @Autowired
     private EmailService emailService;
+
+    private final HolidayRepo holidayRepo;
 
     // Injecting LeaveRequestRepo for database operations
     @Autowired
@@ -29,7 +36,15 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     @Autowired
     private LeaveSheetRepository leaveSheetRepository;
 
+    public LeaveRequestServiceImpl(HolidayRepo holidayRepo) {
+        this.holidayRepo = holidayRepo;
+    }
+
     public LeaveRequest submitLeaveRequest(LeaveRequest leaveRequest) {
+        String employeeId = leaveRequest.getEmployeeId();
+
+        logger.info("Submitting leave request for employeeId={}, from {} to {}",
+                employeeId, leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate());
         // Check if leave start and end dates are provided
         if (leaveRequest.getLeaveStartDate() == null || leaveRequest.getLeaveEndDate() == null) {
             throw new RuntimeException("Leave start date and end date must be provided.");
@@ -37,6 +52,8 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
 
         long overlappingCount = leaveRequestRepository.countOverlappingLeaves(leaveRequest.getEmployeeId(), leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate());
         if (overlappingCount > 0) {
+            logger.warn("Overlapping leave found for employeeId={} during {} to {}",
+                    employeeId, leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate());
             throw new RuntimeException("You have already applied for leave on one or more of these dates.");
         }
 //        Optional<LeaveRequest> existingLeave = leaveRequestRepository.findByEmployeeIdAndLeaveStartDateAndLeaveEndDate(
@@ -48,202 +65,163 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
 
 
         if (existingLeave.isPresent()) {
+            logger.warn("Duplicate leave found for employeeId={} on same start and end date: {}", employeeId, existingLeave.get().getId());
             throw new RuntimeException("You have already applied for leave on the same start and end date.");
         }
 
-        if (!leaveRequest.isLOP()) {
-            validateLeaveBalance(leaveRequest);
-        } else {
-            validateLeaveBalance(leaveRequest);
-        }
+//        if (!leaveRequest.isLOP()) {
+//            validateLeaveBalance(leaveRequest);
+//        } else {
+//            validateLeaveBalance(leaveRequest);
+//        }
 
         // Set status to PENDING and calculate leave duration
         leaveRequest.setLeaveStatus(LeaveRequest.LeaveStatus.PENDING);
         int year = leaveRequest.getLeaveStartDate().getYear();
-        List<LocalDate> nationalHolidays = HolidaysUtil.getNationalHolidays(year);
+//        List<LocalDate> nationalHolidays = HolidaysUtil.getNationalHolidays(year);
+//        leaveRequest.calculateDuration(nationalHolidays);
+
+        List<LocalDate> nationalHolidays = holidayRepo.findByYear(year).stream().map(Holiday::getDate).toList();
         leaveRequest.calculateDuration(nationalHolidays);
 
         // Save the leave request and send an email notification to the manager
         LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
+        logger.info("Leave request submitted successfully for employeeId={}, requestId={}", employeeId, savedRequest.getId());
         emailService.sendLeaveRequestEmail(leaveRequest.getManagerEmail(), leaveRequest);
         return savedRequest;
     }
 
-
-//    // Method to validate if the employee has remaining leave balance for the requested type
-//    public void validateLeaveBalance(LeaveRequest leaveRequest) {
-////        long leaveCount = leaveRequestRepository.countByEmployeeIdAndLeaveType(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType());
-//        Integer totalLeaveDaysTaken = leaveRequestRepository.getTotalLeaveDaysByEmployeeIdAndLeaveType(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType()).orElse(0);
-//
-//        int currentYear = LocalDate.now().getYear();
-//        int leaveYear = leaveRequest.getLeaveStartDate().getYear();
-//
-//        // Reset the leave balance if the year has changed
-//        if (leaveYear < currentYear) {
-//            totalLeaveDaysTaken =0;
-//        }
-//
-//        List<LeaveSheet> leaveSheet = leaveSheetRepository.findAll();
-//        if (leaveSheet.isEmpty()){
-//            throw new ResourceNotFoundException("Leave sheet data is unavailable");
-//        }
-//
-//        // Determine the max leaves based on the leave type
-//        int maxLeaves = switch (leaveRequest.getLeaveType()) {
-//            case SICK -> leaveSheet.get(0).getSICK();
-//            case VACATION -> leaveSheet.get(0).getVACATION();
-//            case CASUAL -> leaveSheet.get(0).getCASUAL();
-//            case MARRIAGE -> leaveSheet.get(0).getMARRIAGE();
-//            case PATERNITY -> leaveSheet.get(0).getPATERNITY();
-//            case MATERNITY -> leaveSheet.get(0).getMATERNITY();
-//            case OTHERS -> leaveSheet.get(0).getOTHERS();
-//            default -> throw new ResourceNotFoundException("Invalid leave type.");
-//        };
-//
-//        double requestedLeaveDays = leaveRequest.calculateBusinessDays(leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate(), HolidaysUtil.getNationalHolidays(leaveRequest.getLeaveStartDate().getYear()));
-//
-//        double remainingLeaveDays = maxLeaves - totalLeaveDaysTaken;
-////        if (totalLeaveDaysTaken + requestedLeaveDays > maxLeaves) {
-////            throw new ResourceNotFoundException(true,"You have exhausted your " + leaveRequest.getLeaveType().name().toLowerCase() + " leave limit of " + maxLeaves + " days. You have " + remainingLeaveDays + " remaining leave days.");
-//////            throw new ResourceNotFoundException("You have exhausted your " + leaveRequest.getLeaveType().name().toLowerCase() + " leave limit of " + maxLeaves + " days. You have " + remainingLeaveDays + " remaining leave days.", String.valueOf(!leaveRequest.isLOP()));
-////        }
-//        if(requestedLeaveDays>remainingLeaveDays){
-//            if(leaveRequest.isLOP()){
-//                double lopDays= requestedLeaveDays - remainingLeaveDays;
-//                leaveRequest.setLopDays(lopDays);
-//            }else{
-//                throw new ResourceNotFoundException(true, "You have exhausted your " + leaveRequest.getLeaveType().name().toLowerCase() +
-//                        " leave limit of " + maxLeaves + " days. You have " + remainingLeaveDays + " remaining leave days.");
-//            }
-//        }else{
-//            leaveRequest.setLopDays(0.0);
-//        }
-//    }
-
     public void validateLeaveBalance(LeaveRequest leaveRequest) {
+        String employeeId = leaveRequest.getEmployeeId();
+        String leaveType = leaveRequest.getLeaveSheet().getLeaveType();
         int leaveYear = leaveRequest.getLeaveStartDate().getYear();
-        List<LeaveSheet> leaveSheet = leaveSheetRepository.findAll();
+        LeaveSheet leaveSheet = leaveSheetRepository.findByLeaveType(leaveType).orElseThrow(() -> new ResourceNotFoundException("Leave type not configured for leaveType: " + leaveType));
+        double maxLeaves = leaveSheet.getNoOfDays();
+        List<LocalDate> nationalHolidays = holidayRepo.findByYear(leaveYear)
+                .stream()
+                .map(Holiday::getDate)
+                .toList();
+        double requestedDays = leaveRequest.calculateBusinessDays(leaveRequest.getLeaveStartDate(), leaveRequest.getLeaveEndDate(), nationalHolidays);
+        double approvedPaid = leaveRequestRepository
+                .getApprovedPaidLeaves(employeeId, leaveType).orElse(0.0);
 
-        if (leaveSheet.isEmpty()) {
-            throw new ResourceNotFoundException("Leave sheet data is unavailable");
+//        double approvedLOP = leaveRequestRepository
+//                .getApprovedLOPDays(employeeId, leaveType)
+//                .orElse(0.0);
+        double remainingPaidLeave = maxLeaves - approvedPaid;
+
+        if (remainingPaidLeave <= 0) {
+            throw new RuntimeException("No remaining paid leaves available. Please submit as LOP.");
         }
 
-        int maxLeaves = switch (leaveRequest.getLeaveType()) {
-            case SICK -> leaveSheet.get(0).getSICK();
-            case VACATION -> leaveSheet.get(0).getVACATION();
-            case CASUAL -> leaveSheet.get(0).getCASUAL();
-            case MARRIAGE -> leaveSheet.get(0).getMARRIAGE();
-            case PATERNITY -> leaveSheet.get(0).getPATERNITY();
-            case MATERNITY -> leaveSheet.get(0).getMATERNITY();
-            case OTHERS -> leaveSheet.get(0).getOTHERS();
-            default -> throw new ResourceNotFoundException("Invalid leave type.");
-        };
-
-        double requestedDays = leaveRequest.calculateBusinessDays(
-                leaveRequest.getLeaveStartDate(),
-                leaveRequest.getLeaveEndDate(),
-                HolidaysUtil.getNationalHolidays(leaveYear)
-        );
-
-        int approvedPaid = leaveRequestRepository
-                .getApprovedPaidLeaveDays(leaveRequest.getEmployeeId(), leaveRequest.getLeaveType())
-                .orElse(0);
-
-        int remaining = maxLeaves - approvedPaid;
-
-        // Case 1: Fully within paid leaves
-        if (remaining >= requestedDays) {
-            leaveRequest.setLopDays(0.0);
+        logger.info("EmployeeId={}, LeaveType={}, Max={}, ApprovedPaid={}, RemainingPaid={}, Requested={}",
+                employeeId, leaveType, maxLeaves, approvedPaid, remainingPaidLeave, requestedDays);
+//        if (remainingPaidLeave >= requestedDays) {
+//            leaveRequest.setLopDays(0.0);
+//            leaveRequest.setLOP(false);
+//        } else if (remainingPaidLeave <= 0) {
+//            leaveRequest.setLopDays(requestedDays);
+//            leaveRequest.setLOP(true);
+//        } else {
+//            leaveRequest.setLopDays(requestedDays - remainingPaidLeave); // Partial LOP
+//        }
+        if (requestedDays > remainingPaidLeave) {
+            throw new RuntimeException("Requested days exceed remaining paid leave. Please adjust the request.");
         }
-        // Case 2: No remaining paid leaves
-        else if (remaining <= 0) {
-            if (leaveRequest.isLOP()) {
-                leaveRequest.setLopDays(requestedDays);  // All days are LOP
-            } else {
-                throw new ResourceNotFoundException(true, "You have exhausted your " +
-                        leaveRequest.getLeaveType().name().toLowerCase() +
-                        " leave. You can enable LOP for " + requestedDays + " days.");
-            }
-        }
-        // Case 3: Partially within paid leaves
-        else {
-            double neededLop = requestedDays - remaining;
-            if (leaveRequest.isLOP()) {
-                leaveRequest.setLopDays(neededLop);
-            } else {
-                throw new ResourceNotFoundException(true, "You have only " + remaining + " " +
-                        leaveRequest.getLeaveType().name().toLowerCase() +
-                        " leave(s) left. Enable LOP for " + neededLop + " day(s).");
-            }
-        }
-    }
-
-    public double getRemainingLeaveDays(String employeeId, LeaveRequest.LeaveType leaveType) {
-//        Integer totalLeaveDaysTaken = leaveRequestRepository.getTotalLeaveDaysByEmployeeIdAndLeaveType(employeeId, leaveType).orElse(0);
-        Integer approvedPaidLeaveDays = leaveRequestRepository.getApprovedPaidLeaveDays(employeeId, leaveType).orElse(0);
-        List<LeaveSheet> leaveSheet = leaveSheetRepository.findAll();
-        if (leaveSheet.isEmpty()) {
-            throw new ResourceNotFoundException("Leave sheet data is unavailable");
-        }
-        int maxLeaves = switch (leaveType) {
-            case SICK -> leaveSheet.get(0).getSICK();
-            case VACATION -> leaveSheet.get(0).getVACATION();
-            case CASUAL -> leaveSheet.get(0).getCASUAL();
-            case MARRIAGE -> leaveSheet.get(0).getMARRIAGE();
-            case PATERNITY -> leaveSheet.get(0).getPATERNITY();
-            case MATERNITY -> leaveSheet.get(0).getMATERNITY();
-            case OTHERS -> leaveSheet.get(0).getOTHERS();
-            default -> throw new ResourceNotFoundException("Invalid leave type.");
-        };
-        return maxLeaves - approvedPaidLeaveDays;
+        logger.info("Validated leave balance: employeeId={}, leaveType={}, allowed={}, approvedPaid={}, remaining={}, requested={}, lopDays={}",
+                employeeId, leaveType, maxLeaves, approvedPaid, remainingPaidLeave, requestedDays, leaveRequest.getLopDays());
     }
 
 
-    private LeaveRequest getLeaveBalance(String employeeId, LeaveRequest.LeaveType leaveType) {
-        Optional<LeaveRequest> leaveBalance = leaveRequestRepository.findByEmployeeIdAndLeaveType(employeeId, leaveType);
-        return leaveBalance.orElseThrow(() -> new ResourceNotFoundException("Leave balance not found for employee: " + employeeId));
+    public double getRemainingLeaveDays(String employeeId, String leaveType) {
+        LeaveSheet leaveSheet = leaveSheetRepository.findByLeaveType(leaveType).orElseThrow(() -> new RuntimeException("Leave type not found"));
+        double maxAllowed = leaveSheet.getNoOfDays();
+        double approvedPaid = leaveRequestRepository.getApprovedPaidLeaves(employeeId, leaveType).orElse(0.0);
+        return maxAllowed - approvedPaid;
     }
 
 
     // Method to approve a leave request
-    @Override
     public LeaveRequest approveLeaveRequest(Long id) {
-
-        // Fetch leave request by ID and update status to APPROVED
-        LeaveRequest leaveRequest = leaveRequestRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Leave Request Id Not Found"));
+        logger.info("Approving leave request with id={}", id);
+        LeaveRequest leaveRequest = leaveRequestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Leave Request Id Not Found"));
+        if (leaveRequest.getLeaveStatus() != LeaveRequest.LeaveStatus.PENDING) {
+            throw new RuntimeException("Only pending leave requests can be approved.");
+        }
+//        validateLeaveBalance(leaveRequest);
+        if (!leaveRequest.isLOP()) {
+            validateLeaveBalance(leaveRequest);
+        }
         leaveRequest.setLeaveStatus(LeaveRequest.LeaveStatus.APPROVED);
-        leaveRequestRepository.save(leaveRequest);
-        emailService.sendResponseToEmployee(leaveRequest.getLeaveStatus(), leaveRequest);
-        return leaveRequest;
+
+        if (leaveRequest.isLOP()) {
+            double totalLopDays = leaveRequestRepository
+                    .getApprovedLOPDays(leaveRequest.getEmployeeId(), leaveRequest.getLeaveSheet().getLeaveType())
+                    .orElse(0.0);
+
+
+            List<LocalDate> nationalHolidays = holidayRepo.findByYear(
+                    leaveRequest.getLeaveStartDate().getYear()
+            ).stream().map(Holiday::getDate).toList();
+
+            double currentRequestDays = leaveRequest.calculateBusinessDays(
+                    leaveRequest.getLeaveStartDate(),
+                    leaveRequest.getLeaveEndDate(),
+                    nationalHolidays
+            );
+
+            leaveRequest.setLopDays(currentRequestDays);
+
+            totalLopDays += currentRequestDays;
+
+            logger.info("Total LOP days after approval for employeeId={}, leaveType={} is {}",
+                    leaveRequest.getEmployeeId(),
+                    leaveRequest.getLeaveSheet().getLeaveType(),
+                    totalLopDays);
+        }
+        LeaveRequest approvedRequest = leaveRequestRepository.save(leaveRequest);
+        logger.info("Leave request approved for employeeId={}, requestId={}, LOP Days={}",
+                approvedRequest.getEmployeeId(), approvedRequest.getId(), approvedRequest.getLopDays());
+        emailService.sendResponseToEmployee(approvedRequest.getLeaveStatus(), approvedRequest);
+        return approvedRequest;
     }
 
 
     // Method to reject a leave request and provide a reason
     @Override
     public LeaveRequest rejectLeaveRequest(Long id, String leaveReason) {
+        logger.info("Rejecting leave request with id={}, reason={}", id, leaveReason);
         LeaveRequest leaveRequest = leaveRequestRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Leave Request Id Not Found"));
         leaveRequest.setLeaveStatus(LeaveRequest.LeaveStatus.REJECTED);
         leaveRequest.setLeaveReason(leaveReason);
         leaveRequestRepository.save(leaveRequest);
+        logger.info("Leave request rejected for employeeId={}, requestId={}, reason={}",
+                leaveRequest.getEmployeeId(), id, leaveReason);
         emailService.sendApprovalNotification(leaveRequest.getLeaveStatus(), leaveRequest);
         return leaveRequest;
     }
 
     // Method to retrieve a leave request by ID
     public LeaveRequest getLeaveRequestById(Long id) {
+        logger.debug("Fetching leave request by id={}", id);
         Optional<LeaveRequest> leaveRequest = leaveRequestRepository.findById(id);
-        if (!leaveRequest.isPresent()) {
+        if (leaveRequest.isEmpty()) {
             throw new ResourceNotFoundException("Leave Request Id Not Found");
         }
+        logger.debug("Leave request retrieved for id={}, employeeId={}", id, leaveRequest.get().getEmployeeId());
         return leaveRequest.get();
     }
 
-    public LinkedHashMap<String, Long> getEmpAndLeaveStatus(String employeeId){
+    public LinkedHashMap<String, Long> getEmpAndLeaveStatus(String employeeId) {
+        logger.info("Fetching leave status summary for employeeId={}", employeeId);
         List<LeaveRequest> leaveRequest = leaveRequestRepository.findByEmployeeId(employeeId);
         long leaveCount = leaveRequest.stream().count();
         long pending = leaveRequest.stream().filter(ele -> ele.getLeaveStatus() == LeaveRequest.LeaveStatus.PENDING).count();
         long approved = leaveRequest.stream().filter(ele -> ele.getLeaveStatus() == LeaveRequest.LeaveStatus.APPROVED).count();
         long reject = leaveRequest.stream().filter(ele -> ele.getLeaveStatus() == LeaveRequest.LeaveStatus.REJECTED).count();
+        logger.debug("Leave summary for employeeId={}: total={}, pending={}, approved={}, reject={}",
+                employeeId, leaveCount, pending, approved, reject);
         LinkedHashMap<String, Long> empAndLeaveStatus = new LinkedHashMap<>();
         empAndLeaveStatus.put("leaveCount", leaveCount);
         empAndLeaveStatus.put("pending", pending);
@@ -319,7 +297,6 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
 
         existingLeaveRequest.setLeaveStartDate(leaveRequest.getLeaveStartDate());
         existingLeaveRequest.setLeaveEndDate(leaveRequest.getLeaveEndDate());
-        existingLeaveRequest.setLeaveType(leaveRequest.getLeaveType());
         existingLeaveRequest.setMedicalDocument(leaveRequest.getMedicalDocument());
         return leaveRequestRepository.save(existingLeaveRequest);
     }
@@ -327,13 +304,15 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     // Method to delete an existing leave request
     @Override
     public String deleteLeaveRequest(Long id) {
+        logger.info("Attempting to delete leave request with ID={}", id);
         LeaveRequest deleteRequest = leaveRequestRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Leave request not found for ID: " + id));
         if (deleteRequest.getLeaveStatus() != LeaveRequest.LeaveStatus.PENDING) {
+            logger.warn("Leave request with ID={} cannot be deleted as it is not in PENDING status. Current status={}",
+                    id, deleteRequest.getLeaveStatus());
             throw new ResourceNotFoundException("Only PENDING leave requests can be deleted.");
         }
         leaveRequestRepository.delete(deleteRequest);
+        logger.info("Leave request with ID={} deleted successfully for employeeId={}", id, deleteRequest.getEmployeeId());
         return "Leave request deleted successfully";
     }
-
-
 }

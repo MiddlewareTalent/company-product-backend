@@ -93,7 +93,7 @@ public class EmailService {
                 "<p style=\"color: #555; font-size: 14px; line-height: 1.5;\"><strong>Employee Name:</strong> " + leaveRequest.getFirstName() + " " + leaveRequest.getLastName() + "</p>" +
                 "<p style=\"color: #555; font-size: 14px; line-height: 1.5;\"><strong>Employee Id:</strong> " + leaveRequest.getEmployeeId() + "</p>" +
                 "<p style=\"color: #555; font-size: 14px; line-height: 1.5;\"><strong>Email:</strong> " + leaveRequest.getEmail() + "</p>" +
-                "<p style=\"color: #555; font-size: 14px; line-height: 1.5;\"><strong>Leave Type:</strong> " + leaveRequest.getLeaveType() + "</p>" +
+                "<p style=\"color: #555; font-size: 14px; line-height: 1.5;\"><strong>Leave Type:</strong> " + leaveRequest.getLeaveSheet().getLeaveType() + "</p>" +
                 "<p style=\"color: #555; font-size: 14px; line-height: 1.5;\"><strong>Start Date:</strong> " + leaveRequest.getLeaveStartDate() + "</p>" +
                 "<p style=\"color: #555; font-size: 14px; line-height: 1.5;\"><strong>End Date:</strong> " + leaveRequest.getLeaveEndDate() + "</p>" +
                 "<p style=\"color: #555; font-size: 14px; line-height: 1.5;\"><strong>Duration:</strong> " + leaveRequest.getDuration() + " Days</p>" +

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -22,13 +23,13 @@ public interface TimesheetRepository extends JpaRepository<Timesheet, Long> {
     boolean existsByEmployeeIdAndStartDateAndEndDateAndStatus(String employeeId, LocalDate startDate, LocalDate endDate, Timesheet.Status status);
 
     // Custom query to find timesheets within a date range
-    @Query("SELECT t FROM Timesheet t WHERE t.startDate BETWEEN :startDate AND :endDate")
-    List<Timesheet> findByStartAndEndDate(@Param("startDate") LocalDate startDate,
+    @Query("SELECT t FROM Timesheet t WHERE t.managerId= :managerId AND t.startDate BETWEEN :startDate AND :endDate AND t.endDate BETWEEN :startDate AND :endDate")
+    List<Timesheet> findByStartAndEndDate(@Param("managerId") String managerId,
+                                          @Param("startDate") LocalDate startDate,
                                           @Param("endDate") LocalDate endDate);
 
     // Custom query to find timesheets for a specific employee and within a date range
-    @Query("SELECT t FROM Timesheet t WHERE t.employeeId = :employeeId AND " +
-            "t.startDate BETWEEN :startDate AND :endDate")
+    @Query("SELECT t FROM Timesheet t WHERE t.employeeId = :employeeId AND t.startDate BETWEEN :startDate AND :endDate AND t.endDate BETWEEN :startDate AND :endDate")
     List<Timesheet> findByEmployeeIdAndDateRange(@Param("employeeId") String employeeId,
                                                  @Param("startDate") LocalDate startDate,
                                                  @Param("endDate") LocalDate endDate);

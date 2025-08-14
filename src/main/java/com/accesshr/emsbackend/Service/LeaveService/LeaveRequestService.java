@@ -17,6 +17,7 @@ public interface LeaveRequestService {
     List<LeaveRequest> getAllEmployeeId(String employeeId);
     LeaveRequest updateLeaveRequest(Long id, LeaveRequest leaveRequest);
     String deleteLeaveRequest(Long id);
-    double getRemainingLeaveDays(String employeeId, LeaveRequest.LeaveType leaveType);
     LinkedHashMap<String, Long> getEmpAndLeaveStatus(String employeeId);
+
+    double getRemainingLeaveDays(String employeeId, String leaveType);
 }
