@@ -38,6 +38,7 @@ public class EmployeeManagerDTO {
     private boolean organizationChart;
     private boolean timeSheet;
     private boolean leaveManagement;
+    private boolean invoice;
     private String role;
     private String password;
     private String newPassword;
@@ -290,5 +291,17 @@ public class EmployeeManagerDTO {
 
     public void setProfilePhoto(String profilePhoto) {
         this.profilePhoto = profilePhoto;
+    }
+
+    public void setMyColleagues(boolean myColleagues) {
+        this.myColleagues = myColleagues;
+    }
+
+    public boolean isInvoice() {
+        return invoice;
+    }
+
+    public void setInvoice(boolean invoice) {
+        this.invoice = invoice;
     }
 }

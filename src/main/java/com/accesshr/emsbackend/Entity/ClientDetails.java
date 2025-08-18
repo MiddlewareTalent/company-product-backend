@@ -42,6 +42,7 @@ public class ClientDetails {
    private boolean organizationChart=false;
    private boolean leaveManagement=false;
    private boolean timeSheet=false;
+   private boolean invoice=false;
 
 
 
@@ -149,4 +150,43 @@ public class ClientDetails {
         this.price = price;
     }
 
+    public boolean isTask() {
+        return task;
+    }
+
+    public void setTask(boolean task) {
+        this.task = task;
+    }
+
+    public boolean isOrganizationChart() {
+        return organizationChart;
+    }
+
+    public void setOrganizationChart(boolean organizationChart) {
+        this.organizationChart = organizationChart;
+    }
+
+    public boolean isLeaveManagement() {
+        return leaveManagement;
+    }
+
+    public void setLeaveManagement(boolean leaveManagement) {
+        this.leaveManagement = leaveManagement;
+    }
+
+    public boolean isTimeSheet() {
+        return timeSheet;
+    }
+
+    public void setTimeSheet(boolean timeSheet) {
+        this.timeSheet = timeSheet;
+    }
+
+    public boolean isInvoice() {
+        return invoice;
+    }
+
+    public void setInvoice(boolean invoice) {
+        this.invoice = invoice;
+    }
 }
