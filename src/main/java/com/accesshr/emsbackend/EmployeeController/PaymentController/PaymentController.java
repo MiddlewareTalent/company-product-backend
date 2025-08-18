@@ -1,30 +1,46 @@
 package com.accesshr.emsbackend.EmployeeController.PaymentController;
 
+import com.accesshr.emsbackend.Dto.EmployeeManagerDTO;
 import com.accesshr.emsbackend.EmployeeController.Config.TenantContext;
 import com.accesshr.emsbackend.Entity.ClientDetails;
+import com.accesshr.emsbackend.Entity.CountryServerConfig;
 import com.accesshr.emsbackend.Service.ClientDetailsService;
+import com.accesshr.emsbackend.Service.EmployeeManagerService;
+import com.accesshr.emsbackend.Service.TenantSchemaService;
 import com.stripe.Stripe;
+import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
-import com.stripe.model.PaymentIntent;
+import com.stripe.model.*;
 import com.stripe.model.checkout.Session;
-import com.stripe.model.Event;
 import com.stripe.net.Webhook;
+import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.CustomerListParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.annotation.PostConstruct;
+import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.bind.annotation.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 
+import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/payment")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173","https://talents-flow-live-server.azurewebsites.net"})
 public class PaymentController {
+
+    private final static Logger logger= LoggerFactory.getLogger(PaymentController.class);
 
     @Value("${stripe.api.key}")
     private String stripeApiKey;
@@ -41,40 +57,295 @@ public class PaymentController {
     @Autowired
     private ClientDetailsService clientDetailsService;
 
+    @Autowired
+    private TenantSchemaService tenantSchemaService;
+
+    @Autowired
+    private EmployeeManagerService employeeManagerService;
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+
+    @Value("${stripe.webhook.secrets}")
+    private String endpointSecret;
+
+
     @PostConstruct
     public void init() {
         Stripe.apiKey = stripeApiKey;
     }
 
-    // SIMPLE SESSION CREATION FOR TESTING
-    @PostMapping("/create-checkout-session/{price}")
-    public ResponseEntity<Map<String, Object>> createSimpleCheckoutSession(@PathVariable int price) throws StripeException {
-        List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
-        lineItems.add(SessionCreateParams.LineItem.builder()
-                .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                        .setCurrency("gbp")
-                        .setUnitAmount((long) price)
-                        .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                .setName("Sample Product")
-                                .build())
-                        .build())
-                .setQuantity(1L)
-                .build());
+//    @Autowired
+//    private  StripeInvoiceRefundService refundService;
 
+
+    @PostMapping("/create-checkout-session/{company}")
+    public ResponseEntity<Map<String, Object>> createSimpleCheckoutSession(
+            @Valid @RequestParam("firstName") String firstName,
+            @RequestParam("lastName") String lastName,
+            @RequestParam("email") String email,
+            @RequestParam("password") String password,
+            @RequestParam("country") String country,
+            @RequestParam("noOfEmployees") int noOfEmployees,
+            @RequestParam("plan") String plan,
+            @RequestParam("price") double price,
+            @RequestParam("task") boolean task,
+            @RequestParam("organizationChart") boolean organizationChart,
+            @RequestParam("leaveManagement") boolean leaveManagement,
+            @RequestParam("timeSheet") boolean timeSheet,
+            @PathVariable String company
+    ) throws StripeException {
+
+        // Generate schema name
+        String schemaName = country + "_" + company.trim().replace(" ", "_");
+
+        Customer customer = getOrCreateCustomer(email, firstName, lastName);
+        System.out.println(email + " = email");
+
+        // Line item
+        List<SessionCreateParams.LineItem> lineItems = List.of(
+                SessionCreateParams.LineItem.builder()
+                        .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                .setCurrency("gbp")
+                                .setUnitAmount((long) (price * 100))
+                                .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                        .setName(plan + " Plan - Talentflow")
+                                        .build())
+                                .build())
+                        .setQuantity(1L)
+                        .build()
+        );
+
+        // Metadata
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("firstName", firstName);
+        metadata.put("lastName", lastName);
+        metadata.put("email", email);
+        metadata.put("password", password);
+        metadata.put("country", country);
+        metadata.put("noOfEmployees", String.valueOf(noOfEmployees));
+        metadata.put("plan", plan);
+        metadata.put("price", String.valueOf(price));
+        metadata.put("task", String.valueOf(task));
+        metadata.put("organizationChart", String.valueOf(organizationChart));
+        metadata.put("leaveManagement", String.valueOf(leaveManagement));
+        metadata.put("timeSheet", String.valueOf(timeSheet));
+        metadata.put("companyName", company);
+
+//     System.out.println("📧 Email in DTO: " + employeeManagerDTO.getEmail());
+// System.out.println("📧 Corp Email in DTO: " + employeeManagerDTO.getCorporateEmail());
+
+
+        // Session create
         SessionCreateParams params = SessionCreateParams.builder()
                 .addAllLineItem(lineItems)
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}")
+                .setSuccessUrl(successUrl + country.trim().toLowerCase() + "_" +
+                        company.trim().replaceAll("\\s+", "_").toLowerCase() + "/login?session_id={CHECKOUT_SESSION_ID}")
                 .setCancelUrl(cancelUrl)
+                .setCustomer(customer.getId())
+                .putAllMetadata(metadata)
+                .setAllowPromotionCodes(true)
+                .setInvoiceCreation(
+                        SessionCreateParams.InvoiceCreation.builder()
+                                .setEnabled(true)
+                                .build()
+                )
                 .build();
 
         Session session = Session.create(params);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", session.getId());
-        response.put("url", session.getUrl());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("id", session.getId(), "url", session.getUrl()));
     }
+
+
+    private Customer getOrCreateCustomer(String email, String firstName, String lastName) throws StripeException {
+        // Search for existing customer
+        CustomerListParams listParams = CustomerListParams.builder()
+                .setEmail(email)
+                .setLimit(1L)
+                .build();
+
+        CustomerCollection customers = Customer.list(listParams);
+        if (!customers.getData().isEmpty()) {
+            return customers.getData().get(0);
+        }
+
+        // If not found, create new customer
+        CustomerCreateParams params = CustomerCreateParams.builder()
+                .setEmail(email)
+                .setName(firstName + " " + lastName)
+                .setDescription("Talent Flow")
+                .build();
+
+        return Customer.create(params);
+    }
+
+
+    @PostMapping("/stripe-webhook")
+    public ResponseEntity<String> handleStripeEventCheckout(
+            @RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String sigHeader) {
+            logger.info("✅ Webhook triggered");
+            logger.info("➡️ Signature {}",sigHeader);
+        try {
+            // Validate the webhook signature
+            Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
+            logger.info("✅ Stripe event received: {}", event.getType());
+
+            if ("checkout.session.completed".equals(event.getType())) {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode rootNode = mapper.readTree(payload);
+                String sessionId = rootNode.path("data").path("object").path("id").asText();
+                logger.info("Extracted Session ID: {}",sessionId);
+
+                // ✅ Retrieve full session from Stripe
+                Session fullSession = Session.retrieve(sessionId);
+
+                logger.info("✅ Full session retrieved");
+
+
+                // String email = fullSession.getCustomerEmail();
+                Map<String, String> metadata = fullSession.getMetadata();
+
+
+                // Extract fields from metadata
+                String company = metadata.get("companyName");
+                String firstName = metadata.get("firstName");
+                String lastName = metadata.get("lastName");
+                String email = metadata.get("email");
+
+                String country = metadata.get("country");
+                String plan = metadata.get("plan");
+                String password = metadata.get("password");
+                int noOfEmployees = Integer.parseInt(metadata.get("noOfEmployees"));
+                double price = Double.parseDouble(metadata.get("price"));
+                boolean task = Boolean.parseBoolean(metadata.get("task"));
+                boolean organizationChart = Boolean.parseBoolean(metadata.get("organizationChart"));
+                boolean leaveManagement = Boolean.parseBoolean(metadata.get("leaveManagement"));
+                boolean timeSheet = Boolean.parseBoolean(metadata.get("timeSheet"));
+
+                String invoiceId = fullSession.getInvoice();
+
+                if (invoiceId != null) {
+
+                    Invoice invoice = Invoice.retrieve(invoiceId);
+                    String invoiceUrl = invoice.getHostedInvoiceUrl();
+
+
+                    sendInvoiceEmail(email, firstName + " " + lastName, company, plan, price, invoiceUrl, invoiceId);
+                } else {
+                    logger.info("⚠️ No invoice created – check if invoice creation was enabled in Checkout session.");
+
+                }
+
+
+                // Your logic to register admin
+                registerAdmin(firstName, lastName, email, country, noOfEmployees, plan, price, company, password, task, organizationChart, leaveManagement, timeSheet);
+
+
+                return ResponseEntity.ok("✅ Webhook handled: session completed.");
+            }
+
+            return ResponseEntity.ok("ℹ️ Unhandled event type: " + event.getType());
+
+        } catch (SignatureVerificationException e) {
+            System.out.println("❌ Invalid Stripe signature: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid signature: " + e.getMessage());
+
+        } catch (StripeException e) {
+            System.out.println("❌ Stripe API error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Stripe error: " + e.getMessage());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Webhook error: " + e.getMessage());
+        }
+    }
+
+
+    public void sendInvoiceEmail(String toEmail, String fullName, String company, String plan, double price, String invoiceUrl, String invoiceId) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("✅ Subscription Invoice - " + company);
+            message.setText("Hello " + fullName + ",\n\n" +
+                    "Thank you for subscribing to the " + plan + " plan.\n" +
+                    "Amount Paid: £" + price + "\n" +
+                    "Company: " + company + "\n\n" +
+                    "You can view or download your invoice here:\n" + invoiceUrl + "\n\n" +
+                    "Best regards,\nInvoice Id :" + invoiceId + "\nTalent Flow Team");
+
+            mailSender.send(message);
+            System.out.println("✅ Invoice email sent to: " + toEmail);
+        } catch (Exception e) {
+            System.out.println("❌ Failed to send invoice email: " + e.getMessage());
+        }
+    }
+
+
+    public String registerAdmin(String firstName, String lastName, String email,
+                                String country, int noOfEmployees, String plan, double price,
+                                String company, String password, boolean task, boolean organizationChart,
+                                boolean leaveManagement, boolean timeSheet) throws Exception {
+        String schemaName = country + "_" + company.trim().replace(" ", "_");
+
+        // Validate country
+        CountryServerConfig serverConfig = CountryServerConfig.valueOf(country.trim().toUpperCase());
+
+        try {
+            // Set tenant context
+            TenantContext.setTenantId(schemaName);
+            TenantContext.setCountry(country);
+
+            // 1. Create schema and tables
+            tenantSchemaService.createTenant(schemaName, country);
+
+            // 2. Save admin in tenant schema
+            EmployeeManagerDTO employeeManagerDTO = new EmployeeManagerDTO();
+            employeeManagerDTO.setFirstName(firstName);
+            employeeManagerDTO.setLastName(lastName);
+            employeeManagerDTO.setEmail(email);
+            employeeManagerDTO.setCorporateEmail(email);
+            employeeManagerDTO.setRole("admin");
+            employeeManagerDTO.setPassword(password);
+            employeeManagerDTO.setLeaveManagement(leaveManagement);
+            employeeManagerDTO.setTask(task);
+            employeeManagerDTO.setTimeSheet(timeSheet);
+            employeeManagerDTO.setOrganizationChart(organizationChart);
+
+            employeeManagerService.addAdmin(schemaName, employeeManagerDTO);
+
+            // 3. Switch to public schema
+            TenantContext.setTenantId("public");
+            TenantContext.setCountry(country);
+
+            ClientDetails clientDetails = new ClientDetails();
+            clientDetails.setFirstName(firstName);
+            clientDetails.setLastName(lastName);
+            clientDetails.setCompanyName(company);
+            clientDetails.setEmail(email);
+            clientDetails.setCountry(country);
+            clientDetails.setSchemaName(schemaName);
+            clientDetails.setServerUrl(serverConfig.getServerUrl());
+            clientDetails.setNoOfEmployees(noOfEmployees);
+            clientDetails.setStarDate(LocalDate.now());
+            clientDetails.setEndDate(LocalDate.now().plusDays(365));
+            clientDetails.setPlan(plan);
+            clientDetails.setTask(task);
+            clientDetails.setOrganizationChart(organizationChart);
+            clientDetails.setLeaveManagement(leaveManagement);
+            clientDetails.setTimeSheet(timeSheet);
+            clientDetails.setPrice(price);
+
+            clientDetailsService.createClient(clientDetails);
+
+            return schemaName;
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
 
     // SESSION CREATION WITH CLIENT METADATA
     @PostMapping("/create-checkout-session")
@@ -85,8 +356,7 @@ public class PaymentController {
         metadata.put("price", String.valueOf(clientDetails.getPrice()));
         metadata.put("noOfEmployees", String.valueOf(clientDetails.getNoOfEmployees()));
 
-        System.out.println("Creating checkout session with metadata: " + metadata);
-
+        logger.info("Creating checkout session with metadata: {}",metadata);
         SessionCreateParams.LineItem lineItem = SessionCreateParams.LineItem.builder()
                 .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
                         .setCurrency("gbp")
@@ -100,7 +370,7 @@ public class PaymentController {
 
         SessionCreateParams params = SessionCreateParams.builder()
                 .addLineItem(lineItem)
-                .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                .setMode(SessionCreateParams.Mode.PAYMENT)
                 .putAllMetadata(metadata)
                 .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}")
                 .setCancelUrl(cancelUrl)
@@ -111,9 +381,6 @@ public class PaymentController {
         Map<String, Object> response = new HashMap<>();
         response.put("url", session.getUrl());
         response.put("id", session.getId());
-
-        System.out.println("Created session: " + session.getId());
-        System.out.println("Session metadata: " + session.getMetadata());
 
         return ResponseEntity.ok(response);
     }
@@ -139,54 +406,60 @@ public class PaymentController {
     }
 
     // STRIPE WEBHOOK ENDPOINT
-    
-@PostMapping("/webhook")
-public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
-    try {
-        Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
-        Session session = (Session) event.getDataObjectDeserializer().getObject().orElse(null);
 
-        if (session == null) {
-            // Fallback: manually extract session ID from raw JSON
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode rootNode = mapper.readTree(payload);
-            String sessionId = rootNode.path("data").path("object").path("id").asText();
-            session = Session.retrieve(sessionId);
-        }
+    @PostMapping("/webhook")
+    public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
+        try {
+            Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+            Session session = (Session) event.getDataObjectDeserializer().getObject().orElse(null);
 
-        System.out.println("Webhook received for session: " + session.getId());
-
-        if (session != null && session.getMetadata() != null) {
-            String schemaName = session.getMetadata().get("schemaName");
-            String tenantId=schemaName;
-            System.out.print("schema name"+schemaName);
-            String country=null;
-
-        if (tenantId!=null) {
-            int index = tenantId.indexOf("_");
-            country = index != -1 ? tenantId.substring(0, index) : tenantId;
-        }
-        TenantContext.setCountry(country);
-        TenantContext.setTenantId("public");
-        System.out.println("country id"+country);
-
-            if (schemaName != null) {
-                ClientDetails clientDetails = clientDetailsService.getClientDetailsBySchema(schemaName);
-                double paidAmount=Double.parseDouble(session.getMetadata().get("price"))/100;
-                clientDetails.setPrice(clientDetails.getPrice()+paidAmount);
-                clientDetails.setNoOfEmployees(Integer.parseInt(session.getMetadata().get("noOfEmployees")));
-                clientDetails.setPlan(session.getMetadata().get("plan"));
-                clientDetailsService.updateClientDetails(clientDetails.getId(), clientDetails);
-
-                System.out.println("Client details updated.");
+            if (session == null) {
+                // Fallback: manually extract session ID from raw JSON
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode rootNode = mapper.readTree(payload);
+                String sessionId = rootNode.path("data").path("object").path("id").asText();
+                session = Session.retrieve(sessionId);
             }
+
+            System.out.println("Webhook received for session: " + session.getId());
+
+            if (session != null && session.getMetadata() != null) {
+                String schemaName = session.getMetadata().get("schemaName");
+                String tenantId = schemaName;
+                System.out.print("schema name" + schemaName);
+                String country = null;
+
+                if (tenantId != null) {
+                    int index = tenantId.indexOf("_");
+                    country = index != -1 ? tenantId.substring(0, index) : tenantId;
+                }
+                TenantContext.setCountry(country);
+                TenantContext.setTenantId("public");
+                System.out.println("country id" + country);
+
+                if (schemaName != null) {
+                    ClientDetails clientDetails = clientDetailsService.getClientDetailsBySchema(schemaName);
+                    double paidAmount = Double.parseDouble(session.getMetadata().get("price")) / 100;
+                    clientDetails.setPrice(clientDetails.getPrice() + paidAmount);
+                    clientDetails.setNoOfEmployees(Integer.parseInt(session.getMetadata().get("noOfEmployees")));
+                    clientDetails.setPlan(session.getMetadata().get("plan"));
+                    clientDetailsService.updateClientDetails(clientDetails.getId(), clientDetails);
+
+                    logger.info("Client details updated");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Webhook error: " + e.getMessage());
         }
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.badRequest().body("Webhook error: " + e.getMessage());
+
+        return ResponseEntity.ok("Webhook received");
     }
 
-    return ResponseEntity.ok("Webhook received");
-}
+
+//    @PostMapping("/invoice/{invoiceId}")
+//    public String refundInvoice(@PathVariable String invoiceId) throws StripeException {
+//        return refundService.refundInvoice(invoiceId);
+//    }
 
 }
