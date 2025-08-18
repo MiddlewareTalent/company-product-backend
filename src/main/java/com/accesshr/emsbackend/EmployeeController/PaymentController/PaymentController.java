@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/payment")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173","https://talents-flow-live-server.azurewebsites.net"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class PaymentController {
 
     private final static Logger logger= LoggerFactory.getLogger(PaymentController.class);
@@ -76,8 +76,6 @@ public class PaymentController {
         Stripe.apiKey = stripeApiKey;
     }
 
-//    @Autowired
-//    private  StripeInvoiceRefundService refundService;
 
 
     @PostMapping("/create-checkout-session/{company}")
@@ -100,8 +98,9 @@ public class PaymentController {
         // Generate schema name
         String schemaName = country + "_" + company.trim().replace(" ", "_");
 
+        // ✅ Create or get existing Stripe customer
         Customer customer = getOrCreateCustomer(email, firstName, lastName);
-        System.out.println(email + " = email");
+        logger.info("email {}", email);
 
         // Line item
         List<SessionCreateParams.LineItem> lineItems = List.of(
@@ -144,7 +143,7 @@ public class PaymentController {
                 .setSuccessUrl(successUrl + country.trim().toLowerCase() + "_" +
                         company.trim().replaceAll("\\s+", "_").toLowerCase() + "/login?session_id={CHECKOUT_SESSION_ID}")
                 .setCancelUrl(cancelUrl)
-                .setCustomer(customer.getId())
+                .setCustomer(customer.getId()) // ✅ Use customer ID, not email
                 .putAllMetadata(metadata)
                 .setAllowPromotionCodes(true)
                 .setInvoiceCreation(
@@ -182,32 +181,38 @@ public class PaymentController {
     }
 
 
+
     @PostMapping("/stripe-webhook")
     public ResponseEntity<String> handleStripeEventCheckout(
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
-        logger.info("✅ Webhook triggered");
-        logger.info("➡️ Signature {}",sigHeader);
+
+        logger.info("Webhook triggered");
+        logger.info("Signature {}", sigHeader);
+        logger.info("Secret {}",endpointSecret);
+
         try {
             // Validate the webhook signature
             Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
-            logger.info("✅ Stripe event received: {}", event.getType());
+            logger.info("Stripe event received {}", event.getType());
 
             if ("checkout.session.completed".equals(event.getType())) {
+                logger.info("Check out session if condition entered");
+                // ✅ Use Jackson to parse session ID
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode rootNode = mapper.readTree(payload);
                 String sessionId = rootNode.path("data").path("object").path("id").asText();
-                logger.info("Extracted Session ID: {}",sessionId);
+                logger.info("Extracted Session ID {}", sessionId);
 
                 // ✅ Retrieve full session from Stripe
                 Session fullSession = Session.retrieve(sessionId);
-
-                logger.info("✅ Full session retrieved");
-
+                logger.info("Full session retrieved");
 
                 // String email = fullSession.getCustomerEmail();
                 Map<String, String> metadata = fullSession.getMetadata();
 
+                // System.out.println("✅ Email: " + email);
+                // System.out.println("✅ Metadata: " + metadata);
 
                 // Extract fields from metadata
                 String company = metadata.get("companyName");
@@ -225,23 +230,26 @@ public class PaymentController {
                 boolean leaveManagement = Boolean.parseBoolean(metadata.get("leaveManagement"));
                 boolean timeSheet = Boolean.parseBoolean(metadata.get("timeSheet"));
 
-//                String invoiceId = fullSession.getInvoice();
+                String invoiceId = fullSession.getInvoice();
 
-//                if (invoiceId != null) {
-//
-//                    Invoice invoice = Invoice.retrieve(invoiceId);
-//                    String invoiceUrl = invoice.getHostedInvoiceUrl();
-//
-//
-//                    sendInvoiceEmail(email, firstName + " " + lastName, company, plan, price, invoiceUrl, invoiceId);
-//                } else {
-//                    logger.info("⚠️ No invoice created – check if invoice creation was enabled in Checkout session.");
-//
-//                }
+                if (invoiceId != null) {
+                    logger.info("Stripe auto-created invoice {}", invoiceId);
+                    Invoice invoice = Invoice.retrieve(invoiceId);
+                    String invoiceUrl = invoice.getHostedInvoiceUrl();
+                    logger.info("Invoice URL {}", invoiceUrl);
+                    logger.info("invoive_Id {}", invoiceId);
+                    sendInvoiceEmail(email, firstName + " " + lastName, company, plan, price, invoiceUrl,invoiceId);
+                } else {
+                    logger.warn("No invoice created – check if invoice creation was enabled in Checkout session.");
+                }
+
+
+
 
 
                 // Your logic to register admin
-                registerAdmin(firstName, lastName, email, country, noOfEmployees, plan, price, company, password, task, organizationChart, leaveManagement, timeSheet);
+                registerAdmin(firstName, lastName, email, country, noOfEmployees, plan, price, company, password , task , organizationChart,leaveManagement,timeSheet);
+
 
 
                 return ResponseEntity.ok("✅ Webhook handled: session completed.");
@@ -250,11 +258,11 @@ public class PaymentController {
             return ResponseEntity.ok("ℹ️ Unhandled event type: " + event.getType());
 
         } catch (SignatureVerificationException e) {
-            System.out.println("❌ Invalid Stripe signature: " + e.getMessage());
+            logger.debug("Invalid Stripe signature {}",e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid signature: " + e.getMessage());
 
         } catch (StripeException e) {
-            System.out.println("❌ Stripe API error: " + e.getMessage());
+            logger.debug("Stripe API error {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Stripe error: " + e.getMessage());
 
         } catch (Exception e) {
@@ -264,29 +272,31 @@ public class PaymentController {
     }
 
 
-//    public void sendInvoiceEmail(String toEmail, String fullName, String company, String plan, double price, String invoiceUrl, String invoiceId) {
-//        try {
-//            SimpleMailMessage message = new SimpleMailMessage();
-//            message.setTo(toEmail);
-//            message.setSubject("✅ Subscription Invoice - " + company);
-//            message.setText("Hello " + fullName + ",\n\n" +
-//                    "Thank you for subscribing to the " + plan + " plan.\n" +
-//                    "Amount Paid: £" + price + "\n" +
-//                    "Company: " + company + "\n\n" +
-//                    "You can view or download your invoice here:\n" + invoiceUrl + "\n\n" +
-//                    "Best regards,\nInvoice Id :" + invoiceId + "\nTalent Flow Team");
-//
-//            mailSender.send(message);
-//            System.out.println("✅ Invoice email sent to: " + toEmail);
-//        } catch (Exception e) {
-//            System.out.println("❌ Failed to send invoice email: " + e.getMessage());
-//        }
-//    }
+    public void sendInvoiceEmail(String toEmail, String fullName, String company, String plan, double price, String invoiceUrl, String invoiceId) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("✅ Subscription Invoice - " + company);
+            message.setText("Hello " + fullName + ",\n\n" +
+                    "Thank you for subscribing to the " + plan + " plan.\n" +
+                    "Amount Paid: £" + price + "\n" +
+                    "Company: " + company + "\n\n" +
+                    "You can view or download your invoice here:\n" + invoiceUrl + "\n\n" +
+                    "Best regards,\nInvoice Id :"+invoiceId+"\nTalent Flow Team");
+
+            mailSender.send(message);
+            logger.info("Invoice email sent to {}", toEmail);
+        } catch (Exception e) {
+            logger.debug("ailed to send invoice email {}", e.getMessage());
+        }
+    }
+
+
 
 
     public String registerAdmin(String firstName, String lastName, String email,
                                 String country, int noOfEmployees, String plan, double price,
-                                String company, String password, boolean task, boolean organizationChart,
+                                String company, String password , boolean task, boolean organizationChart,
                                 boolean leaveManagement, boolean timeSheet) throws Exception {
         String schemaName = country + "_" + company.trim().replace(" ", "_");
 
@@ -347,6 +357,9 @@ public class PaymentController {
     }
 
 
+
+
+
     // SESSION CREATION WITH CLIENT METADATA
     @PostMapping("/create-checkout-session")
     public ResponseEntity<Map<String, Object>> createCheckoutSessionWithMetadata(@RequestBody ClientDetails clientDetails) throws StripeException {
@@ -356,7 +369,8 @@ public class PaymentController {
         metadata.put("price", String.valueOf(clientDetails.getPrice()));
         metadata.put("noOfEmployees", String.valueOf(clientDetails.getNoOfEmployees()));
 
-        logger.info("Creating checkout session with metadata: {}",metadata);
+        logger.info("Creating checkout session with metadata: {}", metadata);
+
         SessionCreateParams.LineItem lineItem = SessionCreateParams.LineItem.builder()
                 .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
                         .setCurrency("gbp")
@@ -382,12 +396,16 @@ public class PaymentController {
         response.put("url", session.getUrl());
         response.put("id", session.getId());
 
+        logger.info("Created session: {}", session.getId());
+        logger.debug("Session metadata: {}", session.getMetadata());
+
         return ResponseEntity.ok(response);
     }
 
     // VERIFY PAYMENT STATUS (OPTIONAL)
     @GetMapping("/verify")
     public ResponseEntity<Map<String, Object>> verifyPayment(@RequestParam String session_id) throws StripeException {
+        logger.info("Verifying payment for session_id: {}", session_id);
         Session session = Session.retrieve(session_id);
         Map<String, Object> response = new HashMap<>();
         response.put("session_id", session_id);
@@ -398,8 +416,10 @@ public class PaymentController {
             response.put("intent_id", intent.getId());
             response.put("intent_status", intent.getStatus());
             response.put("paid", "succeeded".equals(intent.getStatus()));
+            logger.info("PaymentIntent {} has status: {}", intent.getId(), intent.getStatus());
         } else {
             response.put("paid", "complete".equals(session.getPaymentStatus()));
+            logger.info("Session {} payment status: {}", session_id, session.getPaymentStatus());
         }
 
         return ResponseEntity.ok(response);
@@ -414,6 +434,7 @@ public class PaymentController {
             Session session = (Session) event.getDataObjectDeserializer().getObject().orElse(null);
 
             if (session == null) {
+                logger.warn("Could not deserialize session from webhook event, falling back to manual extraction.");
                 // Fallback: manually extract session ID from raw JSON
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode rootNode = mapper.readTree(payload);
@@ -421,45 +442,41 @@ public class PaymentController {
                 session = Session.retrieve(sessionId);
             }
 
-            System.out.println("Webhook received for session: " + session.getId());
+            logger.info("Webhook received for session: {}", session.getId());
 
             if (session != null && session.getMetadata() != null) {
                 String schemaName = session.getMetadata().get("schemaName");
-                String tenantId = schemaName;
-                System.out.print("schema name" + schemaName);
-                String country = null;
+                String tenantId=schemaName;
+                logger.debug("Extracted schemaName: {}", schemaName);
+                String country=null;
 
-                if (tenantId != null) {
+                if (tenantId!=null) {
                     int index = tenantId.indexOf("_");
                     country = index != -1 ? tenantId.substring(0, index) : tenantId;
                 }
                 TenantContext.setCountry(country);
                 TenantContext.setTenantId("public");
-                System.out.println("country id" + country);
+                logger.info("Tenant country: {}, tenantId set to 'public'", country);
 
                 if (schemaName != null) {
                     ClientDetails clientDetails = clientDetailsService.getClientDetailsBySchema(schemaName);
-                    double paidAmount = Double.parseDouble(session.getMetadata().get("price")) / 100;
-                    clientDetails.setPrice(clientDetails.getPrice() + paidAmount);
+                    double paidAmount=Double.parseDouble(session.getMetadata().get("price"))/100;
+                    clientDetails.setPrice(clientDetails.getPrice()+paidAmount);
                     clientDetails.setNoOfEmployees(Integer.parseInt(session.getMetadata().get("noOfEmployees")));
                     clientDetails.setPlan(session.getMetadata().get("plan"));
                     clientDetailsService.updateClientDetails(clientDetails.getId(), clientDetails);
 
-                    logger.info("Client details updated");
+                    logger.info("Client details updated for schema: {}", schemaName);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
+            logger.error("Error processing Stripe webhook", e);
             return ResponseEntity.badRequest().body("Webhook error: " + e.getMessage());
         }
 
         return ResponseEntity.ok("Webhook received");
     }
 
-
-//    @PostMapping("/invoice/{invoiceId}")
-//    public String refundInvoice(@PathVariable String invoiceId) throws StripeException {
-//        return refundService.refundInvoice(invoiceId);
-//    }
 
 }
