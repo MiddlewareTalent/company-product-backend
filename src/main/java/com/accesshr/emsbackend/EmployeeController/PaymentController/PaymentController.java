@@ -186,8 +186,8 @@ public class PaymentController {
     public ResponseEntity<String> handleStripeEventCheckout(
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
-            logger.info("✅ Webhook triggered");
-            logger.info("➡️ Signature {}",sigHeader);
+        logger.info("✅ Webhook triggered");
+        logger.info("➡️ Signature {}",sigHeader);
         try {
             // Validate the webhook signature
             Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
@@ -225,19 +225,19 @@ public class PaymentController {
                 boolean leaveManagement = Boolean.parseBoolean(metadata.get("leaveManagement"));
                 boolean timeSheet = Boolean.parseBoolean(metadata.get("timeSheet"));
 
-                String invoiceId = fullSession.getInvoice();
+//                String invoiceId = fullSession.getInvoice();
 
-                if (invoiceId != null) {
-
-                    Invoice invoice = Invoice.retrieve(invoiceId);
-                    String invoiceUrl = invoice.getHostedInvoiceUrl();
-
-
-                    sendInvoiceEmail(email, firstName + " " + lastName, company, plan, price, invoiceUrl, invoiceId);
-                } else {
-                    logger.info("⚠️ No invoice created – check if invoice creation was enabled in Checkout session.");
-
-                }
+//                if (invoiceId != null) {
+//
+//                    Invoice invoice = Invoice.retrieve(invoiceId);
+//                    String invoiceUrl = invoice.getHostedInvoiceUrl();
+//
+//
+//                    sendInvoiceEmail(email, firstName + " " + lastName, company, plan, price, invoiceUrl, invoiceId);
+//                } else {
+//                    logger.info("⚠️ No invoice created – check if invoice creation was enabled in Checkout session.");
+//
+//                }
 
 
                 // Your logic to register admin
@@ -264,24 +264,24 @@ public class PaymentController {
     }
 
 
-    public void sendInvoiceEmail(String toEmail, String fullName, String company, String plan, double price, String invoiceUrl, String invoiceId) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(toEmail);
-            message.setSubject("✅ Subscription Invoice - " + company);
-            message.setText("Hello " + fullName + ",\n\n" +
-                    "Thank you for subscribing to the " + plan + " plan.\n" +
-                    "Amount Paid: £" + price + "\n" +
-                    "Company: " + company + "\n\n" +
-                    "You can view or download your invoice here:\n" + invoiceUrl + "\n\n" +
-                    "Best regards,\nInvoice Id :" + invoiceId + "\nTalent Flow Team");
-
-            mailSender.send(message);
-            System.out.println("✅ Invoice email sent to: " + toEmail);
-        } catch (Exception e) {
-            System.out.println("❌ Failed to send invoice email: " + e.getMessage());
-        }
-    }
+//    public void sendInvoiceEmail(String toEmail, String fullName, String company, String plan, double price, String invoiceUrl, String invoiceId) {
+//        try {
+//            SimpleMailMessage message = new SimpleMailMessage();
+//            message.setTo(toEmail);
+//            message.setSubject("✅ Subscription Invoice - " + company);
+//            message.setText("Hello " + fullName + ",\n\n" +
+//                    "Thank you for subscribing to the " + plan + " plan.\n" +
+//                    "Amount Paid: £" + price + "\n" +
+//                    "Company: " + company + "\n\n" +
+//                    "You can view or download your invoice here:\n" + invoiceUrl + "\n\n" +
+//                    "Best regards,\nInvoice Id :" + invoiceId + "\nTalent Flow Team");
+//
+//            mailSender.send(message);
+//            System.out.println("✅ Invoice email sent to: " + toEmail);
+//        } catch (Exception e) {
+//            System.out.println("❌ Failed to send invoice email: " + e.getMessage());
+//        }
+//    }
 
 
     public String registerAdmin(String firstName, String lastName, String email,
