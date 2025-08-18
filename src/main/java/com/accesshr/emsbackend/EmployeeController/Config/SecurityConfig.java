@@ -43,7 +43,7 @@ public class SecurityConfig {
                                 "/api/clientDetails", "/api/v1/employeeManager/login", "/api/v1/employeeManager/add",
                                 "/api/v1/employeeManager/change-password", "/api/clientDetails/{id}",
                                 "/api/v1/employeeManager/reset-password/{employeeId}/{newPassword}",
-                                "/api/payment/create-checkout-session/{price}", "/api/payment/create-checkout-session", "/api/payment/webhook", "/api/payment/verify")
+                                "/api/payment/create-checkout-session/{price}", "/api/payment/create-checkout-session/{company}", "/api/payment/webhook", "/api/payment/verify","/api/payment/stripe-webhook")
                         .permitAll()
                         .anyRequest().authenticated() // Require authentication for all other requests
                 )
