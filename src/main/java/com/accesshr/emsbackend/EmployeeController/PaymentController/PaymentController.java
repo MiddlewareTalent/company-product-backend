@@ -56,9 +56,9 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/payment")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173","https://talents-flow-live-server.azurewebsites.net/"})
 public class PaymentController {
-    //payment
+
     @Value("${stripe.api.key}")
     private String stripeApiKey;
 
@@ -163,7 +163,7 @@ public class PaymentController {
             // === Stripe Session ===
             SessionCreateParams.Builder sessionParamsBuilder = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
-                    .setSuccessUrl("http://localhost:3000/" + schemaName + "/login?session_id={CHECKOUT_SESSION_ID}")
+                    .setSuccessUrl(successUrl + schemaName + "/login?session_id={CHECKOUT_SESSION_ID}")
                     .setCancelUrl("http://localhost:3000/cancel")
                     .setCustomerEmail(email)
                     .putAllMetadata(metadata)
