@@ -58,7 +58,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/payment")
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class PaymentController {
-
+    //payment
     @Value("${stripe.api.key}")
     private String stripeApiKey;
 
