@@ -101,10 +101,12 @@ public class PaymentController {
             @RequestParam("task") boolean task,
             @RequestParam("organizationChart") boolean organizationChart,
             @RequestParam("leaveManagement") boolean leaveManagement,
+            @RequestParam("invoice") boolean invoice,
             @RequestParam("timeSheet") boolean timeSheet,
             @RequestParam("basePriceId") String basePriceId,
             @RequestParam(value = "taskAddonPriceId", required = false) String taskAddonPriceId,
             @RequestParam(value = "timeSheetAddonPriceId", required = false) String timeSheetAddonPriceId,
+            @RequestParam(value = "invoiceAddonPriceId", required = false) String invoiceAddonPriceId,
             @PathVariable String company
     ) {
         try {
@@ -143,6 +145,16 @@ public class PaymentController {
                         .build());
             }
 
+            // invoice add-on
+            if (invoice && invoiceAddonPriceId!= null && !invoiceAddonPriceId.isBlank()){
+                lineItems.add(SessionCreateParams.LineItem.builder()
+                        .setPrice(invoiceAddonPriceId)
+                        .setQuantity(1L)
+                        .build());
+            }
+
+
+
             // === Metadata ===
             Map<String, String> metadata = new HashMap<>();
             metadata.put("firstName", firstName);
@@ -156,6 +168,7 @@ public class PaymentController {
             metadata.put("organizationChart", String.valueOf(organizationChart));
             metadata.put("leaveManagement", String.valueOf(leaveManagement));
             metadata.put("timeSheet", String.valueOf(timeSheet));
+            metadata.put("invoice", String.valueOf(invoice));
             metadata.put("companyName", company);
             metadata.put("schemaName", schemaName);
 
@@ -230,10 +243,14 @@ public class PaymentController {
                 boolean organizationChart = Boolean.parseBoolean(metadata.getOrDefault("organizationChart", "false"));
                 boolean leaveManagement = Boolean.parseBoolean(metadata.getOrDefault("leaveManagement", "false"));
                 boolean timeSheet = Boolean.parseBoolean(metadata.getOrDefault("timeSheet", "false"));
+                boolean companyInvoice = Boolean.parseBoolean(metadata.getOrDefault("invoice","false"));
 
                 String subscriptionId = session.getSubscription();
                 double price = 0.0;
                 String invoiceUrl = null;
+
+                System.out.println("➡️ Invoice value from metadata: " + metadata.get("invoice"));
+
 
                 if (subscriptionId != null) {
                     Subscription subscription = Subscription.retrieve(subscriptionId);
@@ -254,7 +271,7 @@ public class PaymentController {
                 System.out.println("💰 Retrieved price: " + price);
                 System.out.println("📨 Invoice link: " + invoiceUrl);
 
-                registerAdmin(firstName, lastName, email, country, noOfEmployees, plan, price, company, password, task, organizationChart, leaveManagement, timeSheet);
+                registerAdmin(firstName, lastName, email, country, noOfEmployees, plan, price, company, password, task, organizationChart, leaveManagement, timeSheet , companyInvoice);
 
                 // ✅ Send invoice email
                 sendInvoiceEmail(email, firstName + " " + lastName, company, plan, price, invoiceUrl);
@@ -303,7 +320,7 @@ public class PaymentController {
     public String registerAdmin(String firstName, String lastName, String email,
                                 String country, int noOfEmployees, String plan, double price,
                                 String company, String password , boolean task, boolean organizationChart,
-                                boolean leaveManagement, boolean timeSheet) throws Exception {
+                                boolean leaveManagement, boolean timeSheet ,boolean companyInvoice) throws Exception {
         String schemaName = country + "_" + company.trim().replace(" ", "_");
 
         // Validate country
@@ -328,6 +345,7 @@ public class PaymentController {
             employeeManagerDTO.setLeaveManagement(leaveManagement);
             employeeManagerDTO.setTask(task);
             employeeManagerDTO.setTimeSheet(timeSheet);
+            employeeManagerDTO.setInvoice(companyInvoice);
             employeeManagerDTO.setOrganizationChart(organizationChart);
 
             employeeManagerService.addAdmin(schemaName, employeeManagerDTO);
@@ -352,6 +370,7 @@ public class PaymentController {
             clientDetails.setOrganizationChart(organizationChart);
             clientDetails.setLeaveManagement(leaveManagement);
             clientDetails.setTimeSheet(timeSheet);
+            clientDetails.setInvoice(companyInvoice);
             clientDetails.setPrice(price);
 
             clientDetailsService.createClient(clientDetails);
