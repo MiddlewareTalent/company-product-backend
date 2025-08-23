@@ -3,6 +3,10 @@ package com.accesshr.emsbackend.Service;
 import com.accesshr.emsbackend.EmployeeController.Config.CountryDataSourceManager;
 import com.accesshr.emsbackend.EmployeeController.Config.DataSourceConfig;
 import com.accesshr.emsbackend.Entity.*;
+import com.accesshr.emsbackend.Entity.Invoice.Client;
+import com.accesshr.emsbackend.Entity.Invoice.CompanyDetails;
+import com.accesshr.emsbackend.Entity.Invoice.Invoice;
+import com.accesshr.emsbackend.Entity.Invoice.InvoiceItem;
 import com.accesshr.emsbackend.exceptions.ResourceNotFoundException;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
@@ -119,7 +123,11 @@ public class TenantSchemaService {
                 LeaveRequest.class,
                 LeaveSheet.class,
                 Notifications.class,
-                JobRoles.class
+                JobRoles.class,
+                Client.class,
+                CompanyDetails.class,
+                Invoice.class,
+                InvoiceItem.class
         );
 
         for (Class<?> entityClass : entityClasses) {
@@ -162,7 +170,11 @@ public class TenantSchemaService {
                 LeaveSheet.class,
                 Notifications.class,
                 JobRoles.class,
-                ClientDetails.class
+                ClientDetails.class,
+                Client.class,
+                CompanyDetails.class,
+                Invoice.class,
+                InvoiceItem.class
         );
 
         for (Class<?> entityClass : entityClasses) {

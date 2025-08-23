@@ -4,6 +4,7 @@ import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 
 public class EmployeeManagerDTO {
@@ -38,7 +39,10 @@ public class EmployeeManagerDTO {
     private boolean organizationChart;
     private boolean timeSheet;
     private boolean leaveManagement;
+
+    @JsonProperty("invoice")
     private boolean invoice;
+
     private String role;
     private String password;
     private String newPassword;
