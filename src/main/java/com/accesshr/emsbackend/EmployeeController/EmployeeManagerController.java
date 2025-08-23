@@ -95,6 +95,7 @@ public class EmployeeManagerController {
             @RequestParam(value = "organizationChart", required = false) boolean organizationChart,
             @RequestParam(value = "timeSheet", required = false) boolean timeSheet,
             @RequestParam(value = "leaveManagement", required = false) boolean leaveManagement,
+            @RequestParam(value = "invoice", required = false) boolean invoice,
             @RequestParam(value = "identityCard", required = false) MultipartFile identityCard,
             @RequestParam(value = "visa", required = false) MultipartFile visa,
             @RequestParam(value = "otherDocuments", required = false) MultipartFile otherDocuments,
@@ -121,6 +122,8 @@ public class EmployeeManagerController {
             employeeManagerDTO.setOrganizationChart(organizationChart);
             employeeManagerDTO.setTimeSheet(timeSheet);
             employeeManagerDTO.setLeaveManagement(leaveManagement);
+            System.out.println(invoice);
+            employeeManagerDTO.setInvoice(invoice);
             employeeManagerDTO.setEmploymentStatus(employmentStatus);
             employeeManagerDTO.setReportingTo(reportingTo);
             employeeManagerDTO.setRole(role);
@@ -154,6 +157,11 @@ public class EmployeeManagerController {
             @RequestParam("noOfEmployes") int noOfEmployees,
             @RequestParam("plan") String plan,
             @RequestParam ("price") double price,
+            @RequestParam("task") boolean task,
+            @RequestParam("organizationChart") boolean organizationChart,
+            @RequestParam("timeSheet") boolean timeSheet,
+            @RequestParam("leaveManagement") boolean leaveManagement,
+            @RequestParam("invoice") boolean invoice,
             @PathVariable String company) {
 
         try {
@@ -183,11 +191,11 @@ public class EmployeeManagerController {
             employeeManagerDTO.setCorporateEmail(email);
             employeeManagerDTO.setRole("admin");
             employeeManagerDTO.setPassword(password);
-            employeeManagerDTO.setLeaveManagement(true);
-            employeeManagerDTO.setTask(true);
-            employeeManagerDTO.setTimeSheet(true);
-            employeeManagerDTO.setOrganizationChart(true);
-
+            employeeManagerDTO.setLeaveManagement(leaveManagement);
+            employeeManagerDTO.setTask(task);
+            employeeManagerDTO.setTimeSheet(timeSheet);
+            employeeManagerDTO.setOrganizationChart(organizationChart);
+            employeeManagerDTO.setInvoice(invoice);
             EmployeeManagerDTO registeredAdmin = employeeManagerService.addAdmin(schemaName, employeeManagerDTO);
 
 //            // 3. Clear context BEFORE saving to default DB
@@ -207,6 +215,11 @@ public class EmployeeManagerController {
             clientDetails.setEndDate(LocalDate.now().plusDays(365));
             clientDetails.setPlan(plan);
             clientDetails.setPrice(price);
+            clientDetails.setLeaveManagement(leaveManagement);
+            clientDetails.setTask(task);
+            clientDetails.setTimeSheet(timeSheet);
+            clientDetails.setOrganizationChart(organizationChart);
+            clientDetails.setInvoice(invoice);
             clientDetailsService.createClient(clientDetails);
 
             return ResponseEntity.ok(schemaName);
