@@ -108,6 +108,7 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
         employee.setReportingTo(employeeManagerDTO.getReportingTo());
         employee.setRole(employeeManagerDTO.getRole());
         employee.setIdentityCard(employeeManagerDTO.getIdentityCard());
+        employee.setRightToWork(employeeManagerDTO.getRightToWork());
         employee.setVisa(employeeManagerDTO.getVisa());
         employee.setOtherDocuments(employeeManagerDTO.getOtherDocuments());
         employee.setProfilePhoto(employeeManagerDTO.getProfilePhoto());
@@ -224,6 +225,7 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
             update.setTimeSheet(employeeManagerDTO.isTimeSheet());
             update.setLeaveManagement(employeeManagerDTO.isLeaveManagement());
             update.setInvoice(employeeManagerDTO.isInvoice());
+            update.setRightToWork(employeeManagerDTO.getRightToWork());
             update.setEmploymentStatus(employeeManagerDTO.getEmploymentStatus());
             update.setReportingTo(employeeManagerDTO.getReportingTo());
             update.setRole(employeeManagerDTO.getRole());
@@ -287,6 +289,7 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
         dto.setTimeSheet(employee.isTimeSheet());
         dto.setLeaveManagement(employee.isLeaveManagement());
         dto.setInvoice(employee.isInvoice());
+        dto.setRightToWork(employee.getRightToWork());
         dto.setEmploymentStatus(employee.getEmploymentStatus());
         dto.setReportingTo(employee.getReportingTo());
         dto.setRole(employee.getRole());

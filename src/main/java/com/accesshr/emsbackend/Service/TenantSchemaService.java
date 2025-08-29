@@ -13,6 +13,8 @@ import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.tool.schema.spi.SchemaManagementToolCoordinator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
@@ -24,6 +26,8 @@ import java.util.Map;
 
 @Service
 public class TenantSchemaService {
+
+    private static final Logger logger= LoggerFactory.getLogger(TenantSchemaService.class);
 
     private final CountryDataSourceManager countryDataSourceManager;
 
@@ -98,7 +102,7 @@ public class TenantSchemaService {
         }
     }
 
-    private void createTablesInSchema(String schemaName, CountryServerConfig config) {
+    public void createTablesInSchema(String schemaName, CountryServerConfig config) {
         Map<String, Object> settings = new HashMap<>();
 
         settings.put("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver");
@@ -189,5 +193,36 @@ public class TenantSchemaService {
                 settings,
                 null
         );
+    }
+
+    public void updateSchemasForCountry(String country) throws SQLException{
+        List<String> schemas = countryDataSourceManager.getAllSchemas(country);
+        CountryServerConfig config = CountryServerConfig.valueOf(country.toUpperCase());
+        for(String schemaName : schemas){
+            try {
+                createTablesInSchema(schemaName, config);
+                logger.info("Schema {} updated in {}", schemaName, country);
+            }catch (Exception e){
+                logger.error("Failed to update schema {} in {}", schemaName, country, e);
+                throw new RuntimeException("Failed to update schema " + schemaName + " in " + country, e);
+            }
+        }
+    }
+
+    public void updateAllSchemas() throws SQLException{
+        Map<String, List<String>> countrySchemas = countryDataSourceManager.getAllSchemasAcrossCountries();
+        for (Map.Entry<String, List<String>> entry : countrySchemas.entrySet()){
+            String country=entry.getKey();
+            CountryServerConfig config = CountryServerConfig.valueOf(country.toUpperCase());
+            for(String schemaName : entry.getValue()){
+                try {
+                    createTablesInSchema(schemaName, config);
+                    logger.info("Schema updated {} in {}",schemaName,country);
+                } catch (Exception e) {
+                    logger.error("throws SQLException {} in {}",schemaName,country);
+                    throw new RuntimeException("Failed to update schema"+e.getMessage());
+                }
+            }
+        }
     }
 }

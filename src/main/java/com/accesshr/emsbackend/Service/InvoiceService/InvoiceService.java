@@ -10,6 +10,7 @@ import com.accesshr.emsbackend.Entity.Invoice.InvoiceItem;
 import com.accesshr.emsbackend.Entity.Invoice.InvoiceStatus;
 import com.accesshr.emsbackend.Repo.InvoiceRepo.ClientRepository;
 import com.accesshr.emsbackend.Repo.InvoiceRepo.InvoiceRepository;
+import com.accesshr.emsbackend.exceptions.ResourceNotFoundException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -43,10 +44,10 @@ public class InvoiceService {
 //            invoice.setClient(newClient);
 //        }
         if(invoice.getIssueDate()==null || invoice.getDueDate()==null){
-            throw new RuntimeException("Invoice start date and end date must be provided.");
+            throw new ResourceNotFoundException("Invoice start date and end date must be provided.");
         }
         if(invoice.getDueDate().isBefore(invoice.getIssueDate())){
-            throw new RuntimeException("Invoice end date cannot be before the start date.");
+            throw new ResourceNotFoundException("Invoice end date cannot be before the start date.");
         }
         Client newClient = invoice.getClient();
         invoice.setInvoiceStatus(InvoiceStatus.PENDING);
