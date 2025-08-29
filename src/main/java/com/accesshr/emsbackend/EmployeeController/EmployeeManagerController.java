@@ -98,6 +98,7 @@ public class EmployeeManagerController {
             @RequestParam(value = "invoice", required = false) boolean invoice,
             @RequestParam(value = "identityCard", required = false) MultipartFile identityCard,
             @RequestParam(value = "visa", required = false) MultipartFile visa,
+            @RequestParam(value = "rightToWork", required = false) MultipartFile rightToWork,
             @RequestParam(value = "otherDocuments", required = false) MultipartFile otherDocuments,
             @RequestParam(value = "profilePhoto", required = false) MultipartFile profilePhoto) {
 
@@ -130,6 +131,7 @@ public class EmployeeManagerController {
             employeeManagerDTO.setProfilePhoto(saveOptionalFile(profilePhoto, "profilePhoto"));
             // Save files and update DTO fields for certificates
             employeeManagerDTO.setIdentityCard(uploadFIle(identityCard, "nationalCard"));
+            employeeManagerDTO.setRightToWork(saveOptionalFile(rightToWork,"rightToWork"));
             employeeManagerDTO.setVisa(saveOptionalFile(visa, "visa"));
             employeeManagerDTO.setOtherDocuments(saveOptionalFile(otherDocuments, "otherDocuments"));
 

@@ -62,6 +62,7 @@ public class EmployeeManager {
 
     private String identityCard;
     private String visa;
+    private String rightToWork;
     private String otherDocuments;
 
     private String password; // Added password field
@@ -311,6 +312,14 @@ public class EmployeeManager {
 
     public void setInvoice(boolean invoice) {
         this.invoice = invoice;
+    }
+
+    public String getRightToWork() {
+        return rightToWork;
+    }
+
+    public void setRightToWork(String rightToWork) {
+        this.rightToWork = rightToWork;
     }
 }
 

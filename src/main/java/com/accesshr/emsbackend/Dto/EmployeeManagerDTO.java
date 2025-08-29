@@ -50,6 +50,7 @@ public class EmployeeManagerDTO {
     // Document file paths or names
     private String identityCard;
     private String visa;
+    private String rightToWork;
     private String otherDocuments;
 
     // Getters and setters
@@ -267,6 +268,14 @@ public class EmployeeManagerDTO {
 
     public String getVisa() {
         return visa;
+    }
+
+    public String getRightToWork(){
+        return rightToWork;
+    }
+
+    public void setRightToWork(String rightToWork){
+        this.rightToWork=rightToWork;
     }
 
     public void setVisa(String visa) {
