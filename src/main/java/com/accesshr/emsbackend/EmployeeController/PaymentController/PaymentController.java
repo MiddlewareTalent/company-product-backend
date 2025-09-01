@@ -183,6 +183,123 @@ public class PaymentController {
                     .setAllowPromotionCodes(true)
                     .setSubscriptionData(
                             SessionCreateParams.SubscriptionData.builder()
+                                    .build()
+                    );
+
+            lineItems.forEach(sessionParamsBuilder::addLineItem);
+
+            Session session = Session.create(sessionParamsBuilder.build());
+
+            return ResponseEntity.ok(Map.of(
+                    "id", session.getId(),
+                    "url", session.getUrl()
+            ));
+
+        } catch (StripeException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Stripe error: " + e.getMessage()));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Internal server error: " + ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/create-trial-checkout-session/{company}")
+    public ResponseEntity<Map<String, Object>> createTrailSubscriptionCheckoutSession(
+            @RequestParam("firstName") String firstName,
+            @RequestParam("lastName") String lastName,
+            @RequestParam("email") String email,
+            @RequestParam("password") String password,
+            @RequestParam("country") String country,
+            @RequestParam("noOfEmployees") int noOfEmployees,
+            @RequestParam("plan") String plan,
+            @RequestParam("task") boolean task,
+            @RequestParam("organizationChart") boolean organizationChart,
+            @RequestParam("leaveManagement") boolean leaveManagement,
+            @RequestParam("invoice") boolean invoice,
+            @RequestParam("timeSheet") boolean timeSheet,
+            @RequestParam("basePriceId") String basePriceId,
+            @RequestParam(value = "taskAddonPriceId", required = false) String taskAddonPriceId,
+            @RequestParam(value = "timeSheetAddonPriceId", required = false) String timeSheetAddonPriceId,
+            @RequestParam(value = "invoiceAddonPriceId", required = false) String invoiceAddonPriceId,
+            @PathVariable String company
+    ) {
+        try {
+            if (company == null || company.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Company name is required"));
+            }
+
+            String schemaName = country.toLowerCase() + "_" + company.trim().replaceAll("\\s+", "_").toLowerCase();
+
+            // === Create Line Items ===
+            List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
+
+            // Base plan
+            if (basePriceId == null || basePriceId.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Base price ID is required"));
+            }
+
+            lineItems.add(SessionCreateParams.LineItem.builder()
+                    .setPrice(basePriceId)
+                    .setQuantity(1L)
+                    .build());
+
+            // Task add-on
+            if (task && taskAddonPriceId != null && !taskAddonPriceId.isBlank()) {
+                lineItems.add(SessionCreateParams.LineItem.builder()
+                        .setPrice(taskAddonPriceId)
+                        .setQuantity(1L)
+                        .build());
+            }
+
+            // Timesheet add-on
+            if (timeSheet && timeSheetAddonPriceId != null && !timeSheetAddonPriceId.isBlank()) {
+                lineItems.add(SessionCreateParams.LineItem.builder()
+                        .setPrice(timeSheetAddonPriceId)
+                        .setQuantity(1L)
+                        .build());
+            }
+
+            // invoice add-on
+            if (invoice && invoiceAddonPriceId!= null && !invoiceAddonPriceId.isBlank()){
+                lineItems.add(SessionCreateParams.LineItem.builder()
+                        .setPrice(invoiceAddonPriceId)
+                        .setQuantity(1L)
+                        .build());
+            }
+
+
+
+            // === Metadata ===
+            Map<String, String> metadata = new HashMap<>();
+            metadata.put("firstName", firstName);
+            metadata.put("lastName", lastName);
+            metadata.put("email", email);
+            metadata.put("password", password);
+            metadata.put("country", country);
+            metadata.put("noOfEmployees", String.valueOf(noOfEmployees));
+            metadata.put("plan", plan);
+            metadata.put("task", String.valueOf(task));
+            metadata.put("organizationChart", String.valueOf(organizationChart));
+            metadata.put("leaveManagement", String.valueOf(leaveManagement));
+            metadata.put("timeSheet", String.valueOf(timeSheet));
+            metadata.put("invoice", String.valueOf(invoice));
+            metadata.put("companyName", company);
+            metadata.put("schemaName", schemaName);
+
+
+            // === Stripe Session ===
+            SessionCreateParams.Builder sessionParamsBuilder = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                    .setSuccessUrl(successUrl + schemaName + "/login?session_id={CHECKOUT_SESSION_ID}")
+                    .setCancelUrl("http://localhost:3000/cancel")
+                    .setCustomerEmail(email)
+                    .putAllMetadata(metadata)
+                    .setAllowPromotionCodes(true)
+                    .setSubscriptionData(
+                            SessionCreateParams.SubscriptionData.builder()
                                     .setTrialPeriodDays(7L)
                                     .build()
                     );
