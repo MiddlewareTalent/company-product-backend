@@ -7,6 +7,7 @@ import com.accesshr.emsbackend.Entity.CountryServerConfig;
 import com.accesshr.emsbackend.Entity.EmployeeManager;
 import com.accesshr.emsbackend.Service.ClientDetailsService;
 import com.accesshr.emsbackend.Service.EmployeeManagerService;
+import com.accesshr.emsbackend.Service.LeaveService.EmailService;
 import com.accesshr.emsbackend.Service.TenantSchemaService;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
@@ -26,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -83,6 +85,11 @@ public class PaymentController {
     @Value("${stripe.webhook.secrets}")
     private String endpointSecret;
 
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @PostConstruct
     public void init() {
@@ -351,7 +358,7 @@ public class PaymentController {
                 // Register Admin
                 String firstName = metadata.get("firstName");
                 String lastName = metadata.get("lastName");
-                String password = metadata.get("password");
+                String password = UUID.randomUUID().toString().substring(0, 8);
                 String country = metadata.get("country");
                 String company = metadata.get("companyName");
                 String plan = metadata.get("plan");
@@ -366,7 +373,6 @@ public class PaymentController {
                 double price = 0.0;
                 String invoiceUrl = null;
 
-                System.out.println("➡️ Invoice value from metadata: " + metadata.get("invoice"));
 
 
                 if (subscriptionId != null) {
@@ -388,9 +394,9 @@ public class PaymentController {
                 System.out.println("💰 Retrieved price: " + price);
                 System.out.println("📨 Invoice link: " + invoiceUrl);
 
-                registerAdmin(firstName, lastName, email, country, noOfEmployees, plan, price, company, password, task, organizationChart, leaveManagement, timeSheet , companyInvoice);
+                String schemaName = registerAdmin(firstName, lastName, email, country, noOfEmployees, plan, price, company, password, task, organizationChart, leaveManagement, timeSheet, companyInvoice);
 
-                // ✅ Send invoice email
+                emailService.sendRegistrationEmail(email,password,schemaName);
                 sendInvoiceEmail(email, firstName + " " + lastName, company, plan, price, invoiceUrl);
 
                 return ResponseEntity.ok("✅ Webhook handled: checkout.session.completed");
