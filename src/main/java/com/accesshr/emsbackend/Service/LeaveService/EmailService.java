@@ -74,6 +74,72 @@ public class EmailService {
         }
     }
 
+    public void sendRegistrationEmail(String email, String password, String schemaName) {
+        String subject = "Welcome to Talentflow";
+
+        String loginUrl = "https://talents-flow-live-server.azurewebsites.net/" + schemaName + "/login";
+        System.out.println("Register Email: " + loginUrl);
+
+        String emailContent =
+                "<!DOCTYPE html>" +
+                        "<html lang='en'>" +
+                        "<head>" +
+                        "<meta charset='UTF-8' />" +
+                        "<meta name='viewport' content='width=device-width,initial-scale=1' />" +
+                        "<title>Welcome to Talentflow</title>" +
+                        "</head>" +
+                        "<body style='margin:0;padding:0;background-color:#f3f4f6;font-family:Arial,sans-serif;color:#111827;'>" +
+
+                        "<table role='presentation' cellpadding='0' cellspacing='0' width='100%' style='background-color:#f3f4f6;padding:32px 16px;'>" +
+                        "<tr><td align='center'>" +
+
+                        "<table role='presentation' cellpadding='0' cellspacing='0' width='100%' style='max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 6px 18px rgba(17,24,39,0.08);'>" +
+
+                        // Header
+                        "<tr>" +
+                        "<td style='background-color:#19CF99;color:#ffffff;text-align:center;padding:20px;'>" +
+                        "<h2 style='margin:0;font-size:22px;font-weight:600;'>Welcome to Talentflow</h2>" +
+                        "</td>" +
+                        "</tr>" +
+
+                        // Body
+                        "<tr><td style='padding:24px;'>" +
+
+                        // Credentials Card (use table, no div)
+                        "<table width='100%' cellpadding='0' cellspacing='0' style='border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;margin-bottom:16px;'>" +
+                        "<tr><td style='padding:16px;'>" +
+                        "<p style='margin:0 0 10px;font-size:13px;color:#6b7280;'>Username : <span style='font-size:15px;font-weight:600;color:#111827;'>" + email + "</span></p>" +
+                        "<p style='margin:0;font-size:13px;color:#6b7280;'>Password : <span style='font-size:15px;font-weight:600;color:#111827;'>" + password + "</span></p>" +
+                        "</td></tr></table>" +
+
+                        // Login Button
+                        "<div style='text-align:center;margin:20px 0;'>" +
+                        "<a href='" + loginUrl + "' target='_blank' " +
+                        "style='display:inline-block;padding:12px 20px;background-color:#19CF99;color:#ffffff;font-size:14px;font-weight:600;border-radius:8px;text-decoration:none;'>Log in to Talentflow</a>" +
+                        "</div>" +
+
+                        // Fallback URL
+                        "<p style='margin:16px 0 0;font-size:12px;color:#6b7280;'>If the button doesn't work, copy and paste this URL into your browser:<br>" +
+                        "<a href='" + loginUrl + "' target='_blank' style='color:#2563eb;word-break:break-all;text-decoration:none;'>" + loginUrl + "</a></p>" +
+
+                        "</td></tr>" +
+
+                        // Footer
+                        "<tr>" +
+                        "<td style='background-color:#f9fafb;padding:16px;text-align:center;color:#9ca3af;font-size:12px;'>" +
+                        "<p style='margin:0;'>© 2025 Talentflow. All rights reserved.</p>" +
+                        "</td>" +
+                        "</tr>" +
+
+                        "</table>" +
+                        "</td></tr>" +
+                        "</table>" +
+                        "</body>" +
+                        "</html>";
+
+        sendEmail(email, subject, emailContent);
+    }
+
     public void sendLeaveRequestEmail(String managerEmail, LeaveRequest leaveRequest) {
         // Set the subject of the email
         String subject = "Leave Approval Request from " + leaveRequest.getLastName() + " " + leaveRequest.getFirstName();
