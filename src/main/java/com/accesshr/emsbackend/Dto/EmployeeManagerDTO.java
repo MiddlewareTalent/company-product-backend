@@ -52,6 +52,7 @@ public class EmployeeManagerDTO {
     private String visa;
     private String rightToWork;
     private String otherDocuments;
+    private boolean isPasswordUpdated;
 
     // Getters and setters
 
@@ -316,5 +317,13 @@ public class EmployeeManagerDTO {
 
     public void setInvoice(boolean invoice) {
         this.invoice = invoice;
+    }
+
+    public boolean getIsPasswordUpdated(){
+        return isPasswordUpdated;
+    }
+
+    public void setIsPasswordUpdated(boolean isPasswordUpdated){
+        this.isPasswordUpdated=isPasswordUpdated;
     }
 }

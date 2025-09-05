@@ -69,6 +69,8 @@ public class EmployeeManager {
 
     private String profilePhoto;
 
+    private boolean isPasswordUpdated;
+
     public boolean isMyColleagues(){//
         return myColleagues;
     }
@@ -320,6 +322,14 @@ public class EmployeeManager {
 
     public void setRightToWork(String rightToWork) {
         this.rightToWork = rightToWork;
+    }
+
+    public boolean getIsPasswordUpdated(){
+        return isPasswordUpdated;
+    }
+
+    public void setIsPasswordUpdated(boolean isPasswordUpdated){
+        this.isPasswordUpdated=isPasswordUpdated;
     }
 }
 

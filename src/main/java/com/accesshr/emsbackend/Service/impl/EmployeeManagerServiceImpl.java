@@ -356,8 +356,9 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
 
 
     public EmployeeManager getEmployeeById(String empId) {
-        return employeeManagerRepository.findByEmployeeId(empId);
-
+        EmployeeManager employeeManager= employeeManagerRepository.findByEmployeeId(empId);
+        System.out.println("employee manager"+employeeManager);
+        return employeeManager;
     }
 
 //    public List<EmployeeManager> alsoWorkingWith(String empId, String workingCountry) throws Exception {
@@ -439,6 +440,17 @@ public class EmployeeManagerServiceImpl implements EmployeeManagerService {
             throw new RuntimeException("Old password is incorrect");
         }
         employeeManager.setPassword(passwordEncoder.encode(newPassword));
+        employeeManagerRepository.save(employeeManager);
+        return true;
+    }
+
+    public boolean forceChangePassword(String email, String newPassword){
+        EmployeeManager employeeManager = employeeManagerRepository.findByCorporateEmail(email);
+        if (employeeManager == null) {
+            throw new RuntimeException("Employee not found with email: " + email);
+        }
+        employeeManager.setPassword(passwordEncoder.encode(newPassword));
+        employeeManager.setIsPasswordUpdated(true);
         employeeManagerRepository.save(employeeManager);
         return true;
     }

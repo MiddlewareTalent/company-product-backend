@@ -36,6 +36,7 @@ public interface EmployeeManagerService {
     // List<EmployeeManager> alsoWorkingWith(String empId ) throws Exception;
     EmployeeManager changePassword(String employeeId, String password) ;
     boolean changePassword(String email, String oldPassword, String newPassword);
+    boolean forceChangePassword(String email, String newPassword);
     List <EmployeeManager> getEmployeesByWorkingCountry(String workingCountry);
     boolean existsByCorporateEmail(String corporateEmail);
 

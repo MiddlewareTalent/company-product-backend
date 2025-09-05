@@ -557,6 +557,16 @@ public class EmployeeManagerController {
         }
     }
 
+    @PostMapping("/force-change-password/{email}/{newPassword}")
+    public ResponseEntity<?> forceChangePassword(@PathVariable String email, @PathVariable String newPassword) {
+        try {
+            boolean password = employeeManagerService.forceChangePassword(email, newPassword);
+            return ResponseEntity.ok(password);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to change password: " + e.getMessage());
+        }
+    }
+
     @GetMapping(value = "/getEmployeesByWorkingCountry/{workingCountry}", produces = "application/json")
     public List<EmployeeManager> getEmployeesByWorkingCountry(@PathVariable String workingCountry) {
         return employeeManagerService.getEmployeesByWorkingCountry(workingCountry);
